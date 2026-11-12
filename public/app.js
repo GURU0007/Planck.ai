@@ -49,7 +49,8 @@ const uploadedFileName = document.getElementById('uploadedFileName');
 
 // Mobile UI Elements
 const instantAnswerBtnMobile = document.getElementById('instantAnswerBtnMobile');
-const modeToggleBtnMobile = document.getElementById('modeToggleBtnMobile');
+const modeManualBtnMobile = document.getElementById('modeManualBtnMobile');
+const modeAutoBtnMobile = document.getElementById('modeAutoBtnMobile');
 const paneTranscript = document.getElementById('paneTranscript');
 const paneAnswers = document.getElementById('paneAnswers');
 const toggleAudioBtnText = document.getElementById('toggleAudioBtnText');
@@ -146,10 +147,15 @@ function setupEventListeners() {
     setGenerationMode('auto');
   });
 
-  if (modeToggleBtnMobile) {
-    modeToggleBtnMobile.addEventListener('click', () => {
-      const nextMode = generationMode === 'manual' ? 'auto' : 'manual';
-      setGenerationMode(nextMode);
+  if (modeManualBtnMobile) {
+    modeManualBtnMobile.addEventListener('click', () => {
+      setGenerationMode('manual');
+    });
+  }
+
+  if (modeAutoBtnMobile) {
+    modeAutoBtnMobile.addEventListener('click', () => {
+      setGenerationMode('auto');
     });
   }
 
@@ -311,16 +317,20 @@ function setGenerationMode(mode) {
   if (mode === 'manual') {
     modeManualBtn.className = 'px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition';
     modeAutoBtn.className = 'px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition';
-    if (modeToggleBtnMobile) {
-      modeToggleBtnMobile.textContent = 'Auto: Off';
-      modeToggleBtnMobile.className = 'px-3 py-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-xs font-bold shrink-0 shadow-xs';
+    if (modeManualBtnMobile) {
+      modeManualBtnMobile.className = 'px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white shadow-xs transition';
+    }
+    if (modeAutoBtnMobile) {
+      modeAutoBtnMobile.className = 'px-2.5 py-1.5 rounded-lg font-bold text-slate-500 hover:text-slate-800 transition';
     }
   } else {
     modeAutoBtn.className = 'px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition';
     modeManualBtn.className = 'px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition';
-    if (modeToggleBtnMobile) {
-      modeToggleBtnMobile.textContent = 'Auto: 1s';
-      modeToggleBtnMobile.className = 'px-3 py-3 border border-indigo-200 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold shrink-0 shadow-xs';
+    if (modeAutoBtnMobile) {
+      modeAutoBtnMobile.className = 'px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white shadow-xs transition';
+    }
+    if (modeManualBtnMobile) {
+      modeManualBtnMobile.className = 'px-2.5 py-1.5 rounded-lg font-bold text-slate-500 hover:text-slate-800 transition';
     }
   }
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -331,6 +341,18 @@ function setGenerationMode(mode) {
 function triggerInstantAnswer() {
   if (!lastTranscriptText) {
     console.log('[Trigger] No transcript text to answer yet.');
+    if (answerStatusBadge) {
+      const prevText = answerStatusBadge.textContent;
+      const prevClass = answerStatusBadge.className;
+      answerStatusBadge.textContent = 'Say question first';
+      answerStatusBadge.className = 'text-[10px] sm:text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full';
+      setTimeout(() => {
+        if (answerStatusBadge.textContent === 'Say question first') {
+          answerStatusBadge.textContent = prevText || 'Standing by';
+          answerStatusBadge.className = prevClass || 'text-[10px] sm:text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full';
+        }
+      }, 1800);
+    }
     return;
   }
   console.log('[Trigger] Manual trigger for:', lastTranscriptText);
@@ -339,6 +361,10 @@ function triggerInstantAnswer() {
   }
   instantAnswerBtn.classList.add('scale-98', 'opacity-80');
   setTimeout(() => instantAnswerBtn.classList.remove('scale-98', 'opacity-80'), 150);
+  if (instantAnswerBtnMobile) {
+    instantAnswerBtnMobile.classList.add('scale-95', 'opacity-80');
+    setTimeout(() => instantAnswerBtnMobile.classList.remove('scale-95', 'opacity-80'), 150);
+  }
 }
 
 // 3. Audio Recording Engine

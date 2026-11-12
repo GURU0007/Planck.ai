@@ -37,7 +37,7 @@
     }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-50 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
 
   <!-- TOP NAVIGATION HEADER -->
   <header class="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shrink-0 shadow-sm gap-2">
@@ -95,15 +95,15 @@
   </div>
 
   <!-- MAIN WORKSPACE: UNIFIED SINGLE SCREEN ON MOBILE, DUAL-PANE ON DESKTOP -->
-  <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+  <main class="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden relative">
 
-    <!-- TOP SECTION ON MOBILE (30% HEIGHT, SCROLLS UP) | LEFT PANE ON DESKTOP (50% WIDTH) -->
-    <section id="paneTranscript" class="w-full h-[30vh] md:h-full md:w-1/2 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white shrink-0 md:shrink overflow-hidden shadow-xs">
+    <!-- TOP SECTION ON MOBILE (20% HEIGHT, SCROLLS UP) | LEFT PANE ON DESKTOP (50% WIDTH) -->
+    <section id="paneTranscript" class="w-full h-[20vh] max-h-[22vh] min-h-[90px] md:h-full md:w-1/2 md:max-h-none border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white shrink-0 md:shrink overflow-hidden shadow-xs">
       <!-- Subheader -->
-      <div class="px-3 sm:px-6 py-2 sm:py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+      <div class="px-3 sm:px-6 py-1.5 sm:py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
         <div class="flex items-center gap-1.5 sm:gap-2">
           <span id="recordingIndicator" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-          <h2 class="text-xs sm:text-sm font-semibold text-slate-700">Live Questions & Audio</h2>
+          <h2 class="text-xs sm:text-sm font-semibold text-slate-700">Live Questions & Audio (20%)</h2>
           <span id="audioMeterText" class="text-[10px] sm:text-xs text-slate-400 font-mono">0 dB</span>
         </div>
         <button id="clearTranscriptBtn" class="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition">
@@ -112,32 +112,32 @@
       </div>
 
       <!-- Transcript Scroll Container (Auto-scrolls up) -->
-      <div id="transcriptContainer" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-3">
+      <div id="transcriptContainer" class="flex-1 p-2 sm:p-6 overflow-y-auto space-y-2 sm:space-y-3">
         <!-- Placeholder / Empty State -->
-        <div id="emptyTranscriptPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
-          <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-            <i data-lucide="headphones" class="w-5 h-5"></i>
+        <div id="emptyTranscriptPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-1">
+          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+            <i data-lucide="headphones" class="w-4 h-4"></i>
           </div>
-          <p class="text-xs text-center max-w-xs px-2">
+          <p class="text-[11px] sm:text-xs text-center max-w-xs px-2">
             Click <strong>"Listen"</strong> above. Questions will stream and scroll up here.
           </p>
         </div>
       </div>
 
       <!-- Live Typing / Interim Banner -->
-      <div id="interimBar" class="px-3 sm:px-6 py-1.5 bg-slate-50 border-t border-slate-100 text-xs sm:text-sm text-slate-500 italic hidden flex items-center gap-2 shrink-0">
+      <div id="interimBar" class="px-3 sm:px-6 py-1 bg-slate-50 border-t border-slate-100 text-[11px] sm:text-sm text-slate-500 italic hidden flex items-center gap-2 shrink-0">
         <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
         <span id="interimText" class="truncate">Listening...</span>
       </div>
     </section>
 
-    <!-- BOTTOM SECTION ON MOBILE (70% HEIGHT) | RIGHT PANE ON DESKTOP (50% WIDTH) -->
-    <section id="paneAnswers" class="w-full flex-1 md:h-full md:w-1/2 flex flex-col bg-slate-50/50 overflow-hidden">
+    <!-- BOTTOM SECTION ON MOBILE (80% HEIGHT) | RIGHT PANE ON DESKTOP (50% WIDTH) -->
+    <section id="paneAnswers" class="w-full flex-1 min-h-0 md:h-full md:w-1/2 flex flex-col bg-slate-50/50 overflow-hidden">
       <!-- Subheader -->
-      <div class="px-3 sm:px-6 py-2 sm:py-2.5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
+      <div class="px-3 sm:px-6 py-1.5 sm:py-2.5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
         <div class="flex items-center gap-2">
           <div class="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
-          <h2 class="text-xs sm:text-sm font-semibold text-slate-800">Instant AI</h2>
+          <h2 class="text-xs sm:text-sm font-semibold text-slate-800">Instant AI (80%)</h2>
           <span class="text-[10px] sm:text-xs bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded border border-emerald-200">Groq Qwen 3.8 (~120ms)</span>
         </div>
         <button id="copyAnswerBtn" class="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition disabled:opacity-40" disabled>
@@ -146,9 +146,9 @@
       </div>
 
       <!-- Active Answer Scroll Container -->
-      <div class="p-3 sm:p-6 flex-1 flex flex-col overflow-y-auto space-y-3">
+      <div class="p-2.5 sm:p-6 flex-1 min-h-0 flex flex-col overflow-y-auto space-y-2.5 sm:space-y-3">
         
-        <!-- Desktop Trigger Bar (hidden on mobile, mobile has thumb bar at bottom) -->
+        <!-- Desktop Trigger Bar (hidden on mobile, mobile has dedicated bottom thumb bar) -->
         <div class="hidden md:flex bg-indigo-50/70 border border-indigo-100 rounded-xl p-2.5 sm:p-3 items-center justify-between gap-3 shadow-xs shrink-0">
           <button id="instantAnswerBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm flex items-center justify-center gap-2 transition text-sm">
             <i data-lucide="zap" class="w-4 h-4 fill-amber-300 text-amber-300"></i>
@@ -167,7 +167,7 @@
         </div>
 
         <!-- Detected Question Card -->
-        <div id="detectedQuestionCard" class="hidden bg-white border border-indigo-100 rounded-xl p-3 sm:p-4 shadow-sm shrink-0">
+        <div id="detectedQuestionCard" class="hidden bg-white border border-indigo-100 rounded-xl p-2.5 sm:p-4 shadow-sm shrink-0">
           <div class="flex items-center justify-between mb-1">
             <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1">
               <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Question
@@ -180,8 +180,8 @@
         </div>
 
         <!-- Generated Talking Points Box -->
-        <div class="flex-1 bg-white border border-slate-200 rounded-xl p-3.5 sm:p-5 shadow-sm flex flex-col min-h-[160px]">
-          <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-2 shrink-0">
+        <div class="flex-1 bg-white border border-slate-200 rounded-xl p-3 sm:p-5 shadow-sm flex flex-col min-h-[140px]">
+          <div class="flex items-center justify-between mb-1.5 border-b border-slate-100 pb-1.5 shrink-0">
             <span class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
               <i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500"></i> Talking Points
             </span>
@@ -189,7 +189,7 @@
           </div>
 
           <div id="answerContent" class="flex-1 overflow-y-auto font-sans text-xs sm:text-sm text-slate-700 leading-relaxed">
-            <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-6">
+            <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-4">
               <i data-lucide="sparkles" class="w-6 h-6 sm:w-8 sm:h-8 text-slate-300"></i>
               <p class="text-xs text-center max-w-xs">When a question is asked, instant talking points will stream here in ~120ms.</p>
             </div>
@@ -206,19 +206,29 @@
 
       </div>
 
-      <!-- MOBILE BOTTOM THUMB ACTION BAR (Easy thumb tapping at bottom on phone) -->
-      <div class="p-2.5 bg-white border-t border-slate-200 shadow-lg flex md:hidden items-center gap-2 shrink-0 z-20">
-        <button id="instantAnswerBtnMobile" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 active:scale-98 text-white font-bold py-3 px-4 rounded-xl shadow-md flex items-center justify-center gap-2 text-sm transition">
-          <i data-lucide="zap" class="w-4 h-4 fill-amber-300 text-amber-300"></i>
-          <span>Generate Answer Now</span>
+    </section>
+  </main>
+
+  <!-- MOBILE BOTTOM THUMB ACTION BAR (Sticky & Fixed at bottom, 100% visible on all mobile screens) -->
+  <div id="mobileBottomBar" class="block md:hidden bg-white border-t border-slate-200 px-3 py-2 shrink-0 z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+    <div class="flex items-center gap-2">
+      <!-- Auto & Manual Selector for Mobile -->
+      <div class="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-1 text-xs font-semibold shrink-0">
+        <button id="modeManualBtnMobile" type="button" class="px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white shadow-xs transition" title="Manual: generate on click">
+          Manual
         </button>
-        <button id="modeToggleBtnMobile" class="px-3 py-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-xs font-bold shrink-0 shadow-xs" title="Toggle Manual / Auto">
-          Auto: Off
+        <button id="modeAutoBtnMobile" type="button" class="px-2.5 py-1.5 rounded-lg font-bold text-slate-500 hover:text-slate-800 transition" title="Auto: generates on 1s pause">
+          Auto
         </button>
       </div>
 
-    </section>
-  </main>
+      <!-- Big Generate Answer Button (Easy thumb reach at bottom) -->
+      <button id="instantAnswerBtnMobile" type="button" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md flex items-center justify-center gap-1.5 text-sm transition">
+        <i data-lucide="zap" class="w-4 h-4 fill-amber-300 text-amber-300 shrink-0"></i>
+        <span class="truncate">Generate Answer</span>
+      </button>
+    </div>
+  </div>
 
   <!-- RESUME / CONTEXT MODAL DRAWER -->
   <div id="contextModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden">
