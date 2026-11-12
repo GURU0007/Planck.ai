@@ -40,22 +40,22 @@
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
 
   <!-- TOP NAVIGATION HEADER -->
-  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-sm">
-    <div class="flex items-center space-x-3">
-      <div class="bg-gradient-to-br from-indigo-600 to-indigo-900 text-amber-300 p-2 rounded-xl shadow-md flex items-center justify-center ring-2 ring-indigo-500/20">
-        <i data-lucide="zap" class="w-5 h-5 fill-amber-300 text-amber-300"></i>
+  <header class="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shrink-0 shadow-sm gap-2">
+    <div class="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
+      <div class="bg-gradient-to-br from-indigo-600 to-indigo-900 text-amber-300 p-1.5 sm:p-2 rounded-xl shadow-md flex items-center justify-center ring-2 ring-indigo-500/20">
+        <i data-lucide="zap" class="w-4 h-4 sm:w-5 sm:h-5 fill-amber-300 text-amber-300"></i>
       </div>
       <div>
-        <h1 class="font-extrabold text-xl text-slate-900 tracking-tight leading-tight">
+        <h1 class="font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight leading-tight">
           planck<span class="text-indigo-600">.ai</span>
         </h1>
       </div>
     </div>
 
     <!-- AUDIO CONTROLS & STATUS -->
-    <div class="flex items-center space-x-4">
-      <!-- Audio Source Selector -->
-      <div class="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 text-xs">
+    <div class="flex items-center space-x-2 sm:space-x-3">
+      <!-- Audio Source Selector (Desktop Only) -->
+      <div id="audioSourceSelector" class="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 text-xs shrink-0">
         <button id="sourceTabBtn" class="px-3 py-1.5 rounded-md font-medium bg-white text-indigo-600 shadow-sm transition">
           <i data-lucide="monitor" class="w-3.5 h-3.5 inline mr-1"></i>Google Voice Tab
         </button>
@@ -64,39 +64,59 @@
         </button>
       </div>
 
+      <!-- Mobile Microphone Indicator (Mobile Only) -->
+      <div id="mobileMicBadge" class="flex md:hidden items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0" title="Mobile browser audio uses Microphone">
+        <i data-lucide="mic" class="w-3.5 h-3.5 text-indigo-600"></i>
+        <span>Mic Mode</span>
+      </div>
+
       <!-- Action Button -->
-      <button id="toggleAudioBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition active:scale-95 text-sm">
-        <i data-lucide="play" class="w-4 h-4"></i>
-        <span>Start Listening</span>
+      <button id="toggleAudioBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0">
+        <i data-lucide="play" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        <span id="toggleAudioBtnText">Listen</span>
       </button>
 
       <!-- Settings / Resume Upload Button -->
-      <button id="openContextBtn" class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg transition text-xs font-semibold flex items-center gap-1.5 shadow-xs" title="Upload Resume & Knowledge Context">
-        <i data-lucide="file-up" class="w-4 h-4 text-indigo-600"></i>
-        <span>Upload Resume</span>
+      <button id="openContextBtn" class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 sm:px-3 py-1.5 rounded-lg transition text-xs font-semibold flex items-center gap-1.5 shadow-xs shrink-0" title="Upload Resume & Knowledge Context">
+        <i data-lucide="file-up" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600"></i>
+        <span class="hidden sm:inline">Upload Resume</span>
+        <span class="sm:hidden">Resume</span>
       </button>
     </div>
   </header>
 
-  <!-- STATUS BANNER (If API Keys missing) -->
-  <div id="apiBanner" class="hidden bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs text-amber-800 flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600"></i>
-      <span id="apiBannerText">API Keys not configured. Update your <code class="bg-amber-100 px-1 py-0.5 rounded">.env</code> file with DEEPGRAM_API_KEY and GROQ_API_KEY.</span>
-    </div>
-    <span class="font-medium">Run <code class="bg-amber-100 px-1 py-0.5 rounded">npm start</code> after saving .env</span>
+  <!-- MOBILE PANE SWITCHER TABS (Mobile Only: < md) -->
+  <div id="mobileTabBar" class="flex md:hidden border-b border-slate-200 bg-white px-2 py-1.5 shrink-0 justify-around text-xs font-semibold gap-2">
+    <button id="mobileTabTranscriptBtn" class="flex-1 py-1.5 text-center border-b-2 border-indigo-600 text-indigo-600 font-bold transition flex items-center justify-center gap-1.5">
+      <i data-lucide="headphones" class="w-3.5 h-3.5"></i>
+      <span>Live Audio</span>
+    </button>
+    <button id="mobileTabAnswersBtn" class="flex-1 py-1.5 text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center gap-1.5 relative">
+      <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500"></i>
+      <span>Instant AI</span>
+      <span id="mobileAnswerDot" class="hidden w-2 h-2 rounded-full bg-indigo-600 animate-ping absolute top-1 right-3"></span>
+    </button>
   </div>
 
-  <!-- MAIN DUAL-PANE WORKSPACE -->
-  <main class="flex-1 flex overflow-hidden">
+  <!-- STATUS BANNER (If API Keys missing) -->
+  <div id="apiBanner" class="hidden bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2 text-xs text-amber-800 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0"></i>
+      <span id="apiBannerText">API Keys not configured. Update your <code class="bg-amber-100 px-1 py-0.5 rounded">.env</code> file with DEEPGRAM_API_KEY and GROQ_API_KEY.</span>
+    </div>
+    <span class="font-medium hidden sm:inline">Run <code class="bg-amber-100 px-1 py-0.5 rounded">npm start</code> after saving .env</span>
+  </div>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
 
     <!-- LEFT PANE: LIVE TRANSCRIPTION (Otter-style) -->
-    <section class="w-1/2 border-r border-slate-200 flex flex-col bg-white">
+    <section id="paneTranscript" class="w-full md:w-1/2 border-r border-slate-200 flex flex-col bg-white flex-1 overflow-hidden">
       <!-- Subheader -->
-      <div class="px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div class="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
         <div class="flex items-center gap-2">
           <span id="recordingIndicator" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-          <h2 class="text-sm font-semibold text-slate-700">Live Conversation Audio</h2>
+          <h2 class="text-xs sm:text-sm font-semibold text-slate-700">Live Conversation Audio</h2>
           <span id="audioMeterText" class="text-xs text-slate-400 font-mono">0 dB</span>
         </div>
         <div class="flex items-center gap-2">
@@ -107,56 +127,56 @@
       </div>
 
       <!-- Transcript Scroll Container -->
-      <div id="transcriptContainer" class="flex-1 p-6 overflow-y-auto space-y-4">
+      <div id="transcriptContainer" class="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4">
         <!-- Placeholder / Empty State -->
         <div id="emptyTranscriptPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-3">
           <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
             <i data-lucide="headphones" class="w-6 h-6"></i>
           </div>
-          <p class="text-sm text-center max-w-sm">
-            Click <strong>"Start Listening"</strong> and select your <strong>Google Voice Tab</strong> (make sure <em>"Also share tab audio"</em> is checked).
+          <p class="text-xs sm:text-sm text-center max-w-sm px-4">
+            Click <strong>"Listen"</strong> to capture audio in real time.
           </p>
         </div>
       </div>
 
       <!-- Live Typing / Interim Banner -->
-      <div id="interimBar" class="px-6 py-3 bg-slate-50 border-t border-slate-100 text-sm text-slate-500 italic hidden flex items-center gap-2">
+      <div id="interimBar" class="px-4 sm:px-6 py-2.5 sm:py-3 bg-slate-50 border-t border-slate-100 text-xs sm:text-sm text-slate-500 italic hidden flex items-center gap-2">
         <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
         <span id="interimText" class="truncate">Listening...</span>
       </div>
     </section>
 
-    <!-- RIGHT PANE: INSTANT COPILOT ANSWERS (Sub-Second LLM) -->
-    <section class="w-1/2 flex flex-col bg-slate-50/50">
+    <!-- RIGHT PANE: INSTANT AI ANSWERS -->
+    <section id="paneAnswers" class="w-full md:w-1/2 flex flex-col bg-slate-50/50 flex-1 overflow-hidden hidden md:flex">
       <!-- Subheader -->
-      <div class="px-6 py-3 border-b border-slate-200 flex items-center justify-between bg-white">
+      <div class="px-4 sm:px-6 py-2.5 sm:py-3 border-b border-slate-200 flex items-center justify-between bg-white">
         <div class="flex items-center gap-2">
           <div class="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
-          <h2 class="text-sm font-semibold text-slate-800">Instant AI</h2>
-          <span class="text-xs bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded border border-emerald-200">Groq Qwen 3.8 (~120ms)</span>
+          <h2 class="text-xs sm:text-sm font-semibold text-slate-800">Instant AI</h2>
+          <span class="text-[10px] sm:text-xs bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded border border-emerald-200">Groq Qwen 3.8 (~120ms)</span>
         </div>
         <button id="copyAnswerBtn" class="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition disabled:opacity-40" disabled>
-          <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Answer
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
         </button>
       </div>
 
       <!-- Active Answer Box -->
-      <div class="p-6 flex-1 flex flex-col overflow-y-auto space-y-4">
+      <div class="p-4 sm:p-6 flex-1 flex flex-col overflow-y-auto space-y-4">
         
         <!-- INSTANT GENERATE TRIGGER & MODE SELECTOR -->
-        <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs">
-          <button id="instantAnswerBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm flex items-center justify-center gap-2 transition text-sm">
+        <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2 sm:gap-3 shadow-xs">
+          <button id="instantAnswerBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-semibold py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg shadow-sm flex items-center justify-center gap-1.5 sm:gap-2 transition text-xs sm:text-sm">
             <i data-lucide="zap" class="w-4 h-4 fill-amber-300 text-amber-300"></i>
-            <span>Generate Answer Now</span>
-            <span class="text-[10px] bg-indigo-500/80 text-indigo-100 px-1.5 py-0.5 rounded font-mono">Spacebar</span>
+            <span>Generate Answer</span>
+            <span class="hidden sm:inline text-[10px] bg-indigo-500/80 text-indigo-100 px-1.5 py-0.5 rounded font-mono">Spacebar</span>
           </button>
           
-          <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg p-1 text-xs">
-            <button id="modeManualBtn" class="px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition" title="Generate only when you click or press Spacebar">
+          <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 text-xs shrink-0">
+            <button id="modeManualBtn" class="px-2 sm:px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition" title="Generate only when you click or press Spacebar">
               Manual
             </button>
-            <button id="modeAutoBtn" class="px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition" title="Automatically generate on 1s silence">
-              Auto (1s)
+            <button id="modeAutoBtn" class="px-2 sm:px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition" title="Automatically generate on 1s silence">
+              Auto
             </button>
           </div>
         </div>

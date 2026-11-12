@@ -47,6 +47,18 @@ const resumeFileInput = document.getElementById('resumeFileInput');
 const uploadStatusBadge = document.getElementById('uploadStatusBadge');
 const uploadedFileName = document.getElementById('uploadedFileName');
 
+// Mobile UI Elements
+const mobileTabTranscriptBtn = document.getElementById('mobileTabTranscriptBtn');
+const mobileTabAnswersBtn = document.getElementById('mobileTabAnswersBtn');
+const mobileAnswerDot = document.getElementById('mobileAnswerDot');
+const paneTranscript = document.getElementById('paneTranscript');
+const paneAnswers = document.getElementById('paneAnswers');
+const toggleAudioBtnText = document.getElementById('toggleAudioBtnText');
+
+function isMobile() {
+  return window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
 // PDF.js worker setup
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -54,11 +66,16 @@ if (window.pdfjsLib) {
 
 // 1. Initial Checks & Setup
 window.addEventListener('DOMContentLoaded', () => {
-  // Set default view to Mic
-  setSource('mic');
+  // Mobile check: force Mic mode, hide tab sharing (not supported on mobile OS)
+  if (isMobile()) {
+    setSource('mic');
+  } else {
+    setSource('mic');
+  }
   checkApiStatus();
   loadContext();
   setupEventListeners();
+  setupMobileTabs();
 });
 
 function setSource(source) {
@@ -204,6 +221,26 @@ function setupEventListeners() {
     } catch (err) {
       contextSaveStatus.textContent = 'Error saving context.';
     }
+  });
+}
+
+// Mobile pane navigation
+function setupMobileTabs() {
+  if (!mobileTabTranscriptBtn || !mobileTabAnswersBtn) return;
+
+  mobileTabTranscriptBtn.addEventListener('click', () => {
+    paneTranscript.classList.remove('hidden');
+    paneAnswers.classList.add('hidden');
+    mobileTabTranscriptBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-indigo-600 text-indigo-600 font-bold transition flex items-center justify-center gap-1.5';
+    mobileTabAnswersBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center gap-1.5 relative';
+  });
+
+  mobileTabAnswersBtn.addEventListener('click', () => {
+    paneAnswers.classList.remove('hidden');
+    paneTranscript.classList.add('hidden');
+    if (mobileAnswerDot) mobileAnswerDot.classList.add('hidden');
+    mobileTabAnswersBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-indigo-600 text-indigo-600 font-bold transition flex items-center justify-center gap-1.5 relative';
+    mobileTabTranscriptBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center gap-1.5';
   });
 }
 
@@ -440,8 +477,8 @@ function setupAudioProcessing() {
 
   // Update UI to recording state
   isRecording = true;
-  toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition active:scale-95 text-sm';
-  toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-white"></i><span>Stop Listening</span>';
+  toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+  toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Listening</span><span class="sm:hidden">Stop</span>';
   recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping';
   lucide.createIcons();
 
@@ -471,8 +508,8 @@ function stopRecording() {
   }
 
   // Reset UI
-  toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition active:scale-95 text-sm';
-  toggleAudioBtn.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i><span>Start Listening</span>';
+  toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+  toggleAudioBtn.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Listening</span><span class="sm:hidden">Listen</span>';
   recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
   audioMeterText.textContent = '0 dB';
   interimBar.classList.add('hidden');
@@ -496,6 +533,16 @@ function handleWebSocketMessage(event) {
     // Immediately cut off previous question and start fresh for the next turn
     activeBubble = null;
     currentTurnAccumulator = [];
+
+    // Auto-switch to answers tab on mobile so mobile user sees the answer immediately
+    if (isMobile() && paneAnswers && paneAnswers.classList.contains('hidden')) {
+      paneAnswers.classList.remove('hidden');
+      if (paneTranscript) paneTranscript.classList.add('hidden');
+      if (mobileTabAnswersBtn && mobileTabTranscriptBtn) {
+        mobileTabAnswersBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-indigo-600 text-indigo-600 font-bold transition flex items-center justify-center gap-1.5 relative';
+        mobileTabTranscriptBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center gap-1.5';
+      }
+    }
 
     detectedQuestionCard.classList.remove('hidden');
     detectedQuestionText.textContent = `"${data.question}"`;
