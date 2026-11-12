@@ -530,6 +530,18 @@ function handleWebSocketMessage(event) {
     activeQuestionText = data.question;
     currentAnswer = '';
 
+    // Solidify any active speech bubble so the flashing/pulsing ping dot stops
+    if (activeBubble) {
+      const pingDot = activeBubble.querySelector('.animate-ping');
+      if (pingDot) pingDot.classList.remove('animate-ping');
+      const pulseCursor = activeBubble.querySelector('.animate-pulse');
+      if (pulseCursor) pulseCursor.remove();
+      const statusSpan = activeBubble.querySelector('span.font-bold');
+      if (statusSpan && statusSpan.textContent.includes('...')) {
+        statusSpan.textContent = statusSpan.textContent.replace('...', '');
+      }
+    }
+
     // Immediately cut off previous question and start fresh for the next turn
     activeBubble = null;
     currentTurnAccumulator = [];
