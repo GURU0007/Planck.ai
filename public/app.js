@@ -1,0 +1,711 @@
+// State variables
+let ws = null;
+let audioContext = null;
+let audioStream = null;
+let scriptProcessor = null;
+let isRecording = false;
+let currentSource = 'mic'; // Default to mic for easy initial testing!
+let generationMode = 'manual'; // 'manual' (default on-demand) | 'auto' (1s pause)
+let currentAnswer = '';
+let activeQuestionText = '';
+let lastTranscriptText = '';
+let qaList = [];
+
+// DOM Elements
+const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+const sourceTabBtn = document.getElementById('sourceTabBtn');
+const sourceMicBtn = document.getElementById('sourceMicBtn');
+const instantAnswerBtn = document.getElementById('instantAnswerBtn');
+const modeManualBtn = document.getElementById('modeManualBtn');
+const modeAutoBtn = document.getElementById('modeAutoBtn');
+const recordingIndicator = document.getElementById('recordingIndicator');
+const audioMeterText = document.getElementById('audioMeterText');
+const transcriptContainer = document.getElementById('transcriptContainer');
+const emptyPlaceholder = document.getElementById('emptyTranscriptPlaceholder');
+const interimBar = document.getElementById('interimBar');
+const interimText = document.getElementById('interimText');
+const detectedQuestionCard = document.getElementById('detectedQuestionCard');
+const detectedQuestionText = document.getElementById('detectedQuestionText');
+const answerContent = document.getElementById('answerContent');
+const answerStatusBadge = document.getElementById('answerStatusBadge');
+const qaHistory = document.getElementById('qaHistory');
+const copyAnswerBtn = document.getElementById('copyAnswerBtn');
+const clearTranscriptBtn = document.getElementById('clearTranscriptBtn');
+const apiBanner = document.getElementById('apiBanner');
+const apiBannerText = document.getElementById('apiBannerText');
+
+// Context Modal Elements
+const openContextBtn = document.getElementById('openContextBtn');
+const closeContextBtn = document.getElementById('closeContextBtn');
+const cancelContextBtn = document.getElementById('cancelContextBtn');
+const contextModal = document.getElementById('contextModal');
+const contextTextarea = document.getElementById('contextTextarea');
+const saveContextBtn = document.getElementById('saveContextBtn');
+const contextSaveStatus = document.getElementById('contextSaveStatus');
+const resumeDropZone = document.getElementById('resumeDropZone');
+const resumeFileInput = document.getElementById('resumeFileInput');
+const uploadStatusBadge = document.getElementById('uploadStatusBadge');
+const uploadedFileName = document.getElementById('uploadedFileName');
+
+// PDF.js worker setup
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// 1. Initial Checks & Setup
+window.addEventListener('DOMContentLoaded', () => {
+  // Set default view to Mic
+  setSource('mic');
+  checkApiStatus();
+  loadContext();
+  setupEventListeners();
+});
+
+function setSource(source) {
+  currentSource = source;
+  if (source === 'mic') {
+    sourceMicBtn.className = 'px-3 py-1.5 rounded-md font-medium bg-white text-indigo-600 shadow-sm transition';
+    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition';
+  } else {
+    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-medium bg-white text-indigo-600 shadow-sm transition';
+    sourceMicBtn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition';
+  }
+}
+
+async function checkApiStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    if (!data.deepgramConfigured || !data.groqConfigured) {
+      apiBanner.classList.remove('hidden');
+      const missing = [];
+      if (!data.deepgramConfigured) missing.push('DEEPGRAM_API_KEY');
+      if (!data.groqConfigured) missing.push('GROQ_API_KEY');
+      apiBannerText.textContent = `Missing API keys: ${missing.join(', ')}. Please update .env and restart.`;
+    }
+  } catch (err) {
+    console.error('Status check failed:', err);
+  }
+}
+
+async function loadContext() {
+  try {
+    const res = await fetch('/api/context');
+    const data = await res.json();
+    contextTextarea.value = data.context || '';
+  } catch (err) {
+    console.error('Failed to load context:', err);
+  }
+}
+
+// 2. Event Listeners
+function setupEventListeners() {
+  toggleAudioBtn.addEventListener('click', toggleRecording);
+
+  sourceTabBtn.addEventListener('click', () => {
+    if (isRecording) stopRecording();
+    setSource('tab');
+  });
+
+  sourceMicBtn.addEventListener('click', () => {
+    if (isRecording) stopRecording();
+    setSource('mic');
+  });
+
+  // Instant Trigger Button & Keyboard Shortcut
+  instantAnswerBtn.addEventListener('click', triggerInstantAnswer);
+
+  window.addEventListener('keydown', (e) => {
+    // Spacebar triggers instant answer if not typing in text field
+    if (e.code === 'Space' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+      e.preventDefault();
+      triggerInstantAnswer();
+    }
+  });
+
+  // Mode Selector (Manual vs Auto)
+  modeManualBtn.addEventListener('click', () => {
+    setGenerationMode('manual');
+  });
+
+  modeAutoBtn.addEventListener('click', () => {
+    setGenerationMode('auto');
+  });
+
+  clearTranscriptBtn.addEventListener('click', () => {
+    transcriptContainer.innerHTML = '';
+    transcriptContainer.appendChild(emptyPlaceholder);
+    emptyPlaceholder.classList.remove('hidden');
+  });
+
+  copyAnswerBtn.addEventListener('click', () => {
+    if (currentAnswer) {
+      navigator.clipboard.writeText(currentAnswer);
+      const originalText = copyAnswerBtn.innerHTML;
+      copyAnswerBtn.innerHTML = '<span class="text-emerald-600 font-bold">✓ Copied!</span>';
+      setTimeout(() => copyAnswerBtn.innerHTML = originalText, 2000);
+    }
+  });
+
+  // Modal handlers
+  openContextBtn.addEventListener('click', () => {
+    contextModal.classList.remove('hidden');
+    lucide.createIcons();
+  });
+  closeContextBtn.addEventListener('click', () => contextModal.classList.add('hidden'));
+  cancelContextBtn.addEventListener('click', () => contextModal.classList.add('hidden'));
+
+  // Drag and Drop & Resume File Upload handlers
+  if (resumeDropZone && resumeFileInput) {
+    resumeDropZone.addEventListener('click', () => resumeFileInput.click());
+
+    resumeDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      resumeDropZone.classList.add('border-indigo-600', 'bg-indigo-100/60');
+    });
+
+    ['dragleave', 'dragend'].forEach(evt => {
+      resumeDropZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        resumeDropZone.classList.remove('border-indigo-600', 'bg-indigo-100/60');
+      });
+    });
+
+    resumeDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      resumeDropZone.classList.remove('border-indigo-600', 'bg-indigo-100/60');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleResumeFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    resumeFileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files.length > 0) {
+        handleResumeFile(e.target.files[0]);
+      }
+    });
+  }
+
+  saveContextBtn.addEventListener('click', async () => {
+    const context = contextTextarea.value;
+    try {
+      const res = await fetch('/api/context', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context })
+      });
+      if (res.ok) {
+        contextSaveStatus.textContent = 'Saved successfully!';
+        setTimeout(() => {
+          contextSaveStatus.textContent = '';
+          contextModal.classList.add('hidden');
+        }, 1200);
+      }
+    } catch (err) {
+      contextSaveStatus.textContent = 'Error saving context.';
+    }
+  });
+}
+
+// Parse Resume (PDF, DOCX, TXT, MD) and populate context
+async function handleResumeFile(file) {
+  if (!file) return;
+
+  const fileName = file.name;
+  const lowerName = fileName.toLowerCase();
+  const isPdf = lowerName.endsWith('.pdf') || file.type === 'application/pdf';
+  const isDocx = lowerName.endsWith('.docx') || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  const isDoc = lowerName.endsWith('.doc') || file.type === 'application/msword';
+
+  uploadStatusBadge.classList.remove('hidden');
+  uploadStatusBadge.className = 'text-xs bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 mt-2';
+  uploadStatusBadge.innerHTML = `<span class="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span> Parsing ${escapeHtml(fileName)}...`;
+
+  try {
+    let extractedText = '';
+
+    if (isPdf) {
+      if (!window.pdfjsLib) {
+        throw new Error('PDF parser is initializing. Please try again in a moment.');
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      const pageTexts = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const str = textContent.items.map(item => item.str).join(' ');
+        pageTexts.push(str);
+      }
+      extractedText = pageTexts.join('\n\n');
+    } else if (isDocx) {
+      if (!window.mammoth) {
+        throw new Error('DOCX parser is initializing. Please check your connection and try again.');
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+      extractedText = result.value || '';
+    } else if (isDoc) {
+      throw new Error('Legacy .doc format detected. Please save/export your resume as .docx or .pdf for clean parsing.');
+    } else {
+      extractedText = await file.text();
+    }
+
+    if (!extractedText.trim()) {
+      throw new Error('No readable text found in the file.');
+    }
+
+    // Clean whitespace
+    extractedText = extractedText.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    contextTextarea.value = extractedText;
+
+    const words = extractedText.split(/\s+/).filter(Boolean).length;
+    uploadStatusBadge.className = 'text-xs bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 mt-2';
+    uploadStatusBadge.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i> <span>${escapeHtml(fileName)} (${words} words extracted)</span>`;
+    lucide.createIcons();
+
+    // Auto-save to server
+    await fetch('/api/context', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context: extractedText })
+    });
+
+    contextSaveStatus.textContent = '✓ Active in AI context!';
+    setTimeout(() => {
+      contextSaveStatus.textContent = '';
+    }, 3000);
+
+  } catch (err) {
+    console.error('Failed to parse file:', err);
+    uploadStatusBadge.className = 'text-xs bg-rose-100 text-rose-800 px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 mt-2';
+    uploadStatusBadge.innerHTML = `<i data-lucide="alert-circle" class="w-3.5 h-3.5 text-rose-600"></i> <span>${escapeHtml(err.message)}</span>`;
+    lucide.createIcons();
+  }
+}
+
+function setGenerationMode(mode) {
+  generationMode = mode;
+  if (mode === 'manual') {
+    modeManualBtn.className = 'px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition';
+    modeAutoBtn.className = 'px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition';
+  } else {
+    modeAutoBtn.className = 'px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition';
+    modeManualBtn.className = 'px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition';
+  }
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'set_generation_mode', mode: mode }));
+  }
+}
+
+function triggerInstantAnswer() {
+  if (!lastTranscriptText) {
+    console.log('[Trigger] No transcript text to answer yet.');
+    return;
+  }
+  console.log('[Trigger] Manual trigger for:', lastTranscriptText);
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'trigger_manual_answer', text: lastTranscriptText }));
+  }
+  instantAnswerBtn.classList.add('scale-98', 'opacity-80');
+  setTimeout(() => instantAnswerBtn.classList.remove('scale-98', 'opacity-80'), 150);
+}
+
+// 3. Audio Recording Engine
+async function toggleRecording() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    await startRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    console.log('[Audio] Requesting user media...');
+
+    // 1. Capture audio based on user selection
+    if (currentSource === 'tab') {
+      try {
+        audioStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: {
+            channelCount: 1,
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          }
+        });
+        // Stop unwanted video track immediately
+        audioStream.getVideoTracks().forEach(t => t.stop());
+        const audioTracks = audioStream.getAudioTracks();
+        if (audioTracks.length === 0) {
+          throw new Error('NO_TAB_AUDIO');
+        }
+      } catch (err) {
+        if (err.message === 'NO_TAB_AUDIO') {
+          alert("Tab audio was not shared! When selecting your Google Voice or Meeting tab, make sure the checkbox 'Also share tab audio' (at bottom-left) is checked.");
+        } else if (err.name !== 'NotAllowedError') {
+          console.warn('[Audio] Tab capture cancelled or error:', err);
+        }
+        stopRecording();
+        return;
+      }
+    } else {
+      // Normal Mode: Microphone (captures room audio / both voices)
+      audioStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: false,
+          autoGainControl: true,
+        }
+      });
+    }
+
+    // 2. Initialize Web Audio Context at native hardware sample rate
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    await audioContext.resume();
+    const sampleRate = audioContext.sampleRate;
+    console.log(`[AudioContext] Resumed at native rate: ${sampleRate}Hz`);
+
+    // 3. Connect WebSocket with sampleRate query param
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${window.location.host}/ws?sampleRate=${sampleRate}`);
+
+    ws.onopen = () => {
+      console.log('[WebSocket] Connected to backend');
+      setupAudioProcessing();
+    };
+
+    ws.onmessage = handleWebSocketMessage;
+    ws.onerror = (err) => console.error('[WebSocket] Error:', err);
+    ws.onclose = () => {
+      console.log('[WebSocket] Connection closed');
+      if (isRecording) stopRecording();
+    };
+
+  } catch (err) {
+    console.error('Audio capture error:', err);
+    alert('Audio capture failed: ' + err.message);
+    stopRecording();
+  }
+}
+
+function setupAudioProcessing() {
+  const sourceNode = audioContext.createMediaStreamSource(audioStream);
+
+  // Buffer size 1024 = ~21ms at 48kHz for lightning-fast streaming chunks
+  scriptProcessor = audioContext.createScriptProcessor(1024, 1, 1);
+
+  // Mute gain node connected to destination to keep ScriptProcessor alive without echo
+  const muteGain = audioContext.createGain();
+  muteGain.gain.value = 0;
+
+  sourceNode.connect(scriptProcessor);
+  scriptProcessor.connect(muteGain);
+  muteGain.connect(audioContext.destination);
+
+  let chunkCount = 0;
+
+  scriptProcessor.onaudioprocess = (e) => {
+    if (!isRecording || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+    const inputData = e.inputBuffer.getChannelData(0);
+
+    // Audio meter calculation
+    let sum = 0;
+    for (let i = 0; i < inputData.length; i++) {
+      sum += inputData[i] * inputData[i];
+    }
+    const rms = Math.sqrt(sum / inputData.length);
+    const db = Math.round(20 * Math.log10(rms || 0.0001));
+    audioMeterText.textContent = `${Math.max(-60, db)} dB`;
+
+    // Convert Float32 [-1, 1] to Int16 PCM
+    const pcm16 = new Int16Array(inputData.length);
+    for (let i = 0; i < inputData.length; i++) {
+      const s = Math.max(-1, Math.min(1, inputData[i]));
+      pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    // Send binary PCM chunk over WebSocket
+    ws.send(pcm16.buffer);
+    chunkCount++;
+    if (chunkCount === 1) {
+      console.log('[Audio] First PCM chunk sent to WebSocket!');
+    }
+  };
+
+  // Update UI to recording state
+  isRecording = true;
+  toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition active:scale-95 text-sm';
+  toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-white"></i><span>Stop Listening</span>';
+  recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping';
+  lucide.createIcons();
+
+  audioStream.getTracks()[0].onended = () => {
+    stopRecording();
+  };
+}
+
+function stopRecording() {
+  isRecording = false;
+
+  if (scriptProcessor) {
+    scriptProcessor.disconnect();
+    scriptProcessor = null;
+  }
+  if (audioContext && audioContext.state !== 'closed') {
+    audioContext.close();
+    audioContext = null;
+  }
+  if (audioStream) {
+    audioStream.getTracks().forEach(t => t.stop());
+    audioStream = null;
+  }
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.close();
+    ws = null;
+  }
+
+  // Reset UI
+  toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition active:scale-95 text-sm';
+  toggleAudioBtn.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i><span>Start Listening</span>';
+  recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
+  audioMeterText.textContent = '0 dB';
+  interimBar.classList.add('hidden');
+  lucide.createIcons();
+}
+
+// 4. Handle Live Transcripts & LLM Streaming Responses
+let activeBubble = null;
+
+function handleWebSocketMessage(event) {
+  const data = JSON.parse(event.data);
+
+  if (data.type === 'transcript') {
+    renderLiveTranscript(data.text, data.isFinal, data.speaker);
+  }
+
+  if (data.type === 'answer_start') {
+    activeQuestionText = data.question;
+    currentAnswer = '';
+
+    // Immediately cut off previous question and start fresh for the next turn
+    activeBubble = null;
+    currentTurnAccumulator = [];
+
+    detectedQuestionCard.classList.remove('hidden');
+    detectedQuestionText.textContent = `"${data.question}"`;
+    document.getElementById('questionTime').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    answerStatusBadge.className = 'text-[11px] bg-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 rounded-full animate-pulse';
+    answerStatusBadge.textContent = '⚡ Streaming Answer (~120ms)...';
+    answerContent.innerHTML = '';
+    copyAnswerBtn.disabled = true;
+  }
+
+  if (data.type === 'answer_token') {
+    currentAnswer += data.token;
+    renderFormattedAnswer(currentAnswer);
+    answerContent.scrollTop = answerContent.scrollHeight;
+  }
+
+  if (data.type === 'answer_done') {
+    answerStatusBadge.className = 'text-[11px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full';
+    answerStatusBadge.textContent = '✓ Ready to Speak';
+    copyAnswerBtn.disabled = false;
+
+    addToHistory(activeQuestionText, currentAnswer);
+  }
+
+  if (data.type === 'answer_error' || data.type === 'system_error') {
+    answerStatusBadge.className = 'text-[11px] bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full';
+    answerStatusBadge.textContent = 'Cooldown Active';
+    answerContent.innerHTML = `
+      <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 space-y-2 text-xs">
+        <div class="font-bold flex items-center gap-1.5 text-sm">
+          <span>⏳</span> Groq Cooldown
+        </div>
+        <p class="leading-relaxed">${escapeHtml(data.message)}</p>
+        <p class="text-[11px] text-amber-700">Your token bucket resets automatically in ~15-20 seconds. Resume context has been optimized.</p>
+      </div>
+    `;
+  }
+}
+
+// Render live transcript directly in the chat feed with paragraph accumulation
+let currentTurnAccumulator = [];
+let lastBubbleTime = 0;
+
+function renderLiveTranscript(text, isFinal, speakerId) {
+  emptyPlaceholder.classList.add('hidden');
+
+  let speakerLabel = 'Speaker';
+  let badgeColor = 'bg-indigo-500';
+
+  if (currentSource === 'tab') {
+    speakerLabel = 'Interviewer (Call Audio)';
+    badgeColor = 'bg-indigo-600';
+  } else if (speakerId !== null && speakerId !== undefined) {
+    speakerLabel = `Speaker ${speakerId + 1}`;
+    badgeColor = speakerId % 2 === 0 ? 'bg-indigo-500' : 'bg-emerald-500';
+  }
+
+  const now = Date.now();
+  // If more than 3 seconds of silence passed since last speech, start a fresh bubble
+  if (now - lastBubbleTime > 3000 && activeBubble) {
+    activeBubble = null;
+    currentTurnAccumulator = [];
+  }
+  lastBubbleTime = now;
+
+  if (!activeBubble) {
+    activeBubble = document.createElement('div');
+    activeBubble.className = 'bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 hover:bg-slate-100/60 transition';
+    transcriptContainer.appendChild(activeBubble);
+    currentTurnAccumulator = [];
+  }
+
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  if (isFinal) {
+    if (text.trim()) {
+      currentTurnAccumulator.push(text.trim());
+    }
+  }
+
+  // Combined full question text from all clauses so far
+  const fullText = currentTurnAccumulator.length > 0 
+    ? (isFinal ? currentTurnAccumulator.join(' ') : currentTurnAccumulator.join(' ') + ' ' + text)
+    : text;
+
+  lastTranscriptText = fullText;
+
+  if (!isFinal) {
+    // Live in-progress speech (gray italic typing indicator)
+    activeBubble.innerHTML = `
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full ${badgeColor} animate-ping"></span> ${speakerLabel}...
+        </span>
+        <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
+      </div>
+      <p class="text-sm text-slate-600 italic leading-relaxed">${escapeHtml(fullText)}<span class="inline-block w-1.5 h-3 bg-indigo-500 ml-1 animate-pulse"></span></p>
+    `;
+  } else {
+    // Solid text containing this finalized question
+    activeBubble.innerHTML = `
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full ${badgeColor}"></span> ${speakerLabel}
+        </span>
+        <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
+      </div>
+      <p class="text-sm text-slate-800 leading-relaxed font-medium">${escapeHtml(fullText)}</p>
+      <div class="pt-1 flex justify-end">
+        <button class="manual-answer-btn text-[11px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md font-medium flex items-center gap-1 transition">
+          ⚡ Answer this question
+        </button>
+      </div>
+    `;
+
+    const btn = activeBubble.querySelector('.manual-answer-btn');
+    const capturedFullQuestion = fullText;
+    btn.addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('[Manual Trigger] Sending question:', capturedFullQuestion);
+        ws.send(JSON.stringify({ type: 'trigger_manual_answer', text: capturedFullQuestion }));
+      }
+    });
+
+    // CUT OFF: Keep complete questions together (up to 30-35 words max)
+    const wordCount = fullText.trim().split(/\s+/).filter(Boolean).length;
+    const trimmed = text.trim();
+    if (trimmed.endsWith('?') || wordCount >= 30) {
+      activeBubble = null;
+      currentTurnAccumulator = [];
+    }
+  }
+
+  transcriptContainer.scrollTop = transcriptContainer.scrollHeight;
+}
+
+// Render formatted, clean, compact talking points without huge gaps or markdown stars
+function renderFormattedAnswer(text) {
+  if (!text || !text.trim()) {
+    answerContent.innerHTML = `<p class="text-xs text-slate-400 italic">Listening for question...</p>`;
+    return;
+  }
+
+  // 1. Convert markdown bold **word** to clean bold HTML tags
+  let cleaned = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-900">$1</strong>');
+  cleaned = cleaned.replace(/\*(.*?)\*/g, '$1');
+
+  // 2. Normalize whitespace and newlines (prevent multiple blank rows)
+  cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  // 3. Split by lines and remove empty rows
+  const rawLines = cleaned.split('\n').map(l => l.trim()).filter(Boolean);
+
+  const formattedHtml = rawLines.map(line => {
+    // Numbered item: "1. ..." or "1) ..."
+    const numMatch = line.match(/^(\d+)[.)]\s*(.*)/);
+    if (numMatch) {
+      return `
+        <div class="flex items-start gap-2.5 py-1.5 border-b border-slate-100/70 last:border-0">
+          <span class="shrink-0 w-5 h-5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center border border-indigo-200/80 mt-0.5">${numMatch[1]}</span>
+          <div class="flex-1 text-slate-800 text-[13.5px] leading-snug">${numMatch[2]}</div>
+        </div>
+      `;
+    }
+    // Bullet item
+    if (line.startsWith('•') || line.startsWith('-')) {
+      const content = line.replace(/^[•\-]\s*/, '');
+      return `
+        <div class="flex items-start gap-2 py-1 text-slate-800 text-[13.5px] leading-snug">
+          <span class="text-indigo-600 font-bold leading-tight">•</span>
+          <div class="flex-1">${content}</div>
+        </div>
+      `;
+    }
+    // Regular paragraph
+    return `<p class="text-slate-800 text-[13.5px] leading-snug py-1">${line}</p>`;
+  }).join('');
+
+  answerContent.innerHTML = formattedHtml || `<p class="text-xs text-slate-400 italic">Formatting answer...</p>`;
+}
+
+// Add to previous Q&A turns
+function addToHistory(question, answer) {
+  qaList.unshift({ question, answer, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+  
+  qaHistory.innerHTML = '';
+  qaList.slice(0, 5).forEach((item, index) => {
+    const card = document.createElement('div');
+    card.className = 'p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1 hover:border-indigo-300 cursor-pointer transition';
+    card.innerHTML = `
+      <div class="flex justify-between items-center text-slate-400 text-[10px]">
+        <span class="font-bold text-indigo-600">Q#${qaList.length - index}</span>
+        <span>${item.time}</span>
+      </div>
+      <p class="font-semibold text-slate-800 truncate">"${escapeHtml(item.question)}"</p>
+    `;
+    card.addEventListener('click', () => {
+      detectedQuestionCard.classList.remove('hidden');
+      detectedQuestionText.textContent = `"${item.question}"`;
+      renderFormattedAnswer(item.answer);
+      currentAnswer = item.answer;
+      copyAnswerBtn.disabled = false;
+    });
+    qaHistory.appendChild(card);
+  });
+}
+
+function escapeHtml(string) {
+  const div = document.createElement('div');
+  div.innerText = string;
+  return div.innerHTML;
+}

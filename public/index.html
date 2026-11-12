@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>planck.ai</title>
+  <!-- PDF.js CDN for client-side PDF resume parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Mammoth.js CDN for client-side DOCX resume parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    .animate-pulse-slow {
+      animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+
+  <!-- TOP NAVIGATION HEADER -->
+  <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-sm">
+    <div class="flex items-center space-x-3">
+      <div class="bg-gradient-to-br from-indigo-600 to-indigo-900 text-amber-300 p-2 rounded-xl shadow-md flex items-center justify-center ring-2 ring-indigo-500/20">
+        <i data-lucide="zap" class="w-5 h-5 fill-amber-300 text-amber-300"></i>
+      </div>
+      <div>
+        <h1 class="font-extrabold text-xl text-slate-900 tracking-tight leading-tight">
+          planck<span class="text-indigo-600">.ai</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- AUDIO CONTROLS & STATUS -->
+    <div class="flex items-center space-x-4">
+      <!-- Audio Source Selector -->
+      <div class="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 text-xs">
+        <button id="sourceTabBtn" class="px-3 py-1.5 rounded-md font-medium bg-white text-indigo-600 shadow-sm transition">
+          <i data-lucide="monitor" class="w-3.5 h-3.5 inline mr-1"></i>Google Voice Tab
+        </button>
+        <button id="sourceMicBtn" class="px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition">
+          <i data-lucide="mic" class="w-3.5 h-3.5 inline mr-1"></i>Mic (Test Mode)
+        </button>
+      </div>
+
+      <!-- Action Button -->
+      <button id="toggleAudioBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm transition active:scale-95 text-sm">
+        <i data-lucide="play" class="w-4 h-4"></i>
+        <span>Start Listening</span>
+      </button>
+
+      <!-- Settings / Resume Upload Button -->
+      <button id="openContextBtn" class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg transition text-xs font-semibold flex items-center gap-1.5 shadow-xs" title="Upload Resume & Knowledge Context">
+        <i data-lucide="file-up" class="w-4 h-4 text-indigo-600"></i>
+        <span>Upload Resume</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- STATUS BANNER (If API Keys missing) -->
+  <div id="apiBanner" class="hidden bg-amber-50 border-b border-amber-200 px-6 py-2 text-xs text-amber-800 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600"></i>
+      <span id="apiBannerText">API Keys not configured. Update your <code class="bg-amber-100 px-1 py-0.5 rounded">.env</code> file with DEEPGRAM_API_KEY and GROQ_API_KEY.</span>
+    </div>
+    <span class="font-medium">Run <code class="bg-amber-100 px-1 py-0.5 rounded">npm start</code> after saving .env</span>
+  </div>
+
+  <!-- MAIN DUAL-PANE WORKSPACE -->
+  <main class="flex-1 flex overflow-hidden">
+
+    <!-- LEFT PANE: LIVE TRANSCRIPTION (Otter-style) -->
+    <section class="w-1/2 border-r border-slate-200 flex flex-col bg-white">
+      <!-- Subheader -->
+      <div class="px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div class="flex items-center gap-2">
+          <span id="recordingIndicator" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+          <h2 class="text-sm font-semibold text-slate-700">Live Conversation Audio</h2>
+          <span id="audioMeterText" class="text-xs text-slate-400 font-mono">0 dB</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="clearTranscriptBtn" class="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Transcript Scroll Container -->
+      <div id="transcriptContainer" class="flex-1 p-6 overflow-y-auto space-y-4">
+        <!-- Placeholder / Empty State -->
+        <div id="emptyTranscriptPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-3">
+          <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+            <i data-lucide="headphones" class="w-6 h-6"></i>
+          </div>
+          <p class="text-sm text-center max-w-sm">
+            Click <strong>"Start Listening"</strong> and select your <strong>Google Voice Tab</strong> (make sure <em>"Also share tab audio"</em> is checked).
+          </p>
+        </div>
+      </div>
+
+      <!-- Live Typing / Interim Banner -->
+      <div id="interimBar" class="px-6 py-3 bg-slate-50 border-t border-slate-100 text-sm text-slate-500 italic hidden flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+        <span id="interimText" class="truncate">Listening...</span>
+      </div>
+    </section>
+
+    <!-- RIGHT PANE: INSTANT COPILOT ANSWERS (Sub-Second LLM) -->
+    <section class="w-1/2 flex flex-col bg-slate-50/50">
+      <!-- Subheader -->
+      <div class="px-6 py-3 border-b border-slate-200 flex items-center justify-between bg-white">
+        <div class="flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
+          <h2 class="text-sm font-semibold text-slate-800">Instant AI</h2>
+          <span class="text-xs bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded border border-emerald-200">Groq Qwen 3.8 (~120ms)</span>
+        </div>
+        <button id="copyAnswerBtn" class="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition disabled:opacity-40" disabled>
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Answer
+        </button>
+      </div>
+
+      <!-- Active Answer Box -->
+      <div class="p-6 flex-1 flex flex-col overflow-y-auto space-y-4">
+        
+        <!-- INSTANT GENERATE TRIGGER & MODE SELECTOR -->
+        <div class="bg-indigo-50/70 border border-indigo-100 rounded-xl p-3 flex items-center justify-between gap-3 shadow-xs">
+          <button id="instantAnswerBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm flex items-center justify-center gap-2 transition text-sm">
+            <i data-lucide="zap" class="w-4 h-4 fill-amber-300 text-amber-300"></i>
+            <span>Generate Answer Now</span>
+            <span class="text-[10px] bg-indigo-500/80 text-indigo-100 px-1.5 py-0.5 rounded font-mono">Spacebar</span>
+          </button>
+          
+          <div class="flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg p-1 text-xs">
+            <button id="modeManualBtn" class="px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition" title="Generate only when you click or press Spacebar">
+              Manual
+            </button>
+            <button id="modeAutoBtn" class="px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition" title="Automatically generate on 1s silence">
+              Auto (1s)
+            </button>
+          </div>
+        </div>
+
+        <!-- Detected Question Card -->
+        <div id="detectedQuestionCard" class="hidden bg-white border border-indigo-100 rounded-xl p-4 shadow-sm">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1">
+              <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Detected Question
+            </span>
+            <span id="questionTime" class="text-[11px] text-slate-400 font-mono">Just now</span>
+          </div>
+          <p id="detectedQuestionText" class="text-sm font-semibold text-slate-900 leading-snug">
+            "What is your experience optimizing PostgreSQL queries?"
+          </p>
+        </div>
+
+        <!-- Generated Talking Points Box -->
+        <div class="flex-1 bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-4 h-4 text-indigo-500"></i> Suggested Talking Points
+            </span>
+            <span id="answerStatusBadge" class="text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Standing by</span>
+          </div>
+
+          <div id="answerContent" class="flex-1 overflow-y-auto font-sans text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+            <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
+              <i data-lucide="sparkles" class="w-8 h-8 text-slate-300"></i>
+              <p class="text-xs text-center max-w-xs">When the caller asks a question, actionable bullet points tailored to your resume will stream here in milliseconds.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q&A History Section -->
+        <div class="space-y-2">
+          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Previous Q&A Turns</h3>
+          <div id="qaHistory" class="space-y-2 max-h-48 overflow-y-auto">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- RESUME / CONTEXT MODAL DRAWER -->
+  <div id="contextModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <i data-lucide="briefcase" class="w-5 h-5 text-indigo-600"></i>
+          <h3 class="font-bold text-slate-800">Custom Knowledge & Resume Context</h3>
+        </div>
+        <button id="closeContextBtn" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 flex-1 overflow-y-auto space-y-4">
+        <!-- DRAG & DROP / CLICK UPLOAD ZONE -->
+        <div id="resumeDropZone" class="border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50/70 rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2 group">
+          <input type="file" id="resumeFileInput" accept=".pdf,.docx,.doc,.txt,.md" class="hidden" />
+          <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition shadow-xs">
+            <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-slate-800">Upload Your Resume (PDF, DOCX, or TXT)</p>
+            <p class="text-xs text-slate-500 mt-0.5">Click to browse or drag & drop your resume file here</p>
+          </div>
+          <div id="uploadStatusBadge" class="hidden text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-medium flex items-center gap-1.5 mt-2">
+            <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i>
+            <span id="uploadedFileName">Resume uploaded</span>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-slate-700 flex items-center justify-between">
+            <span>Extracted Resume Text / Talking Points</span>
+            <span class="text-[10px] text-slate-400 font-normal">Editable</span>
+          </label>
+          <textarea id="contextTextarea" rows="8" class="w-full text-xs font-mono p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed text-slate-800" placeholder="Your parsed resume text will appear here. You can also edit it directly..."></textarea>
+        </div>
+      </div>
+
+      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+        <span id="contextSaveStatus" class="text-xs text-emerald-600 font-medium"></span>
+        <div class="flex gap-2">
+          <button id="cancelContextBtn" class="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-100">Cancel</button>
+          <button id="saveContextBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition">Save Context</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
