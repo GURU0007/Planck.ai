@@ -48,9 +48,8 @@ const uploadStatusBadge = document.getElementById('uploadStatusBadge');
 const uploadedFileName = document.getElementById('uploadedFileName');
 
 // Mobile UI Elements
-const mobileTabTranscriptBtn = document.getElementById('mobileTabTranscriptBtn');
-const mobileTabAnswersBtn = document.getElementById('mobileTabAnswersBtn');
-const mobileAnswerDot = document.getElementById('mobileAnswerDot');
+const instantAnswerBtnMobile = document.getElementById('instantAnswerBtnMobile');
+const modeToggleBtnMobile = document.getElementById('modeToggleBtnMobile');
 const paneTranscript = document.getElementById('paneTranscript');
 const paneAnswers = document.getElementById('paneAnswers');
 const toggleAudioBtnText = document.getElementById('toggleAudioBtnText');
@@ -67,15 +66,10 @@ if (window.pdfjsLib) {
 // 1. Initial Checks & Setup
 window.addEventListener('DOMContentLoaded', () => {
   // Mobile check: force Mic mode, hide tab sharing (not supported on mobile OS)
-  if (isMobile()) {
-    setSource('mic');
-  } else {
-    setSource('mic');
-  }
+  setSource('mic');
   checkApiStatus();
   loadContext();
   setupEventListeners();
-  setupMobileTabs();
 });
 
 function setSource(source) {
@@ -131,6 +125,9 @@ function setupEventListeners() {
 
   // Instant Trigger Button & Keyboard Shortcut
   instantAnswerBtn.addEventListener('click', triggerInstantAnswer);
+  if (instantAnswerBtnMobile) {
+    instantAnswerBtnMobile.addEventListener('click', triggerInstantAnswer);
+  }
 
   window.addEventListener('keydown', (e) => {
     // Spacebar triggers instant answer if not typing in text field
@@ -148,6 +145,13 @@ function setupEventListeners() {
   modeAutoBtn.addEventListener('click', () => {
     setGenerationMode('auto');
   });
+
+  if (modeToggleBtnMobile) {
+    modeToggleBtnMobile.addEventListener('click', () => {
+      const nextMode = generationMode === 'manual' ? 'auto' : 'manual';
+      setGenerationMode(nextMode);
+    });
+  }
 
   clearTranscriptBtn.addEventListener('click', () => {
     transcriptContainer.innerHTML = '';
@@ -221,26 +225,6 @@ function setupEventListeners() {
     } catch (err) {
       contextSaveStatus.textContent = 'Error saving context.';
     }
-  });
-}
-
-// Mobile pane navigation
-function setupMobileTabs() {
-  if (!mobileTabTranscriptBtn || !mobileTabAnswersBtn) return;
-
-  mobileTabTranscriptBtn.addEventListener('click', () => {
-    paneTranscript.classList.remove('hidden');
-    paneAnswers.classList.add('hidden');
-    mobileTabTranscriptBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-indigo-600 text-indigo-600 font-bold transition flex items-center justify-center gap-1.5';
-    mobileTabAnswersBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center gap-1.5 relative';
-  });
-
-  mobileTabAnswersBtn.addEventListener('click', () => {
-    paneAnswers.classList.remove('hidden');
-    paneTranscript.classList.add('hidden');
-    if (mobileAnswerDot) mobileAnswerDot.classList.add('hidden');
-    mobileTabAnswersBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-indigo-600 text-indigo-600 font-bold transition flex items-center justify-center gap-1.5 relative';
-    mobileTabTranscriptBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center gap-1.5';
   });
 }
 
@@ -327,9 +311,17 @@ function setGenerationMode(mode) {
   if (mode === 'manual') {
     modeManualBtn.className = 'px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition';
     modeAutoBtn.className = 'px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition';
+    if (modeToggleBtnMobile) {
+      modeToggleBtnMobile.textContent = 'Auto: Off';
+      modeToggleBtnMobile.className = 'px-3 py-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-700 text-xs font-bold shrink-0 shadow-xs';
+    }
   } else {
     modeAutoBtn.className = 'px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition';
     modeManualBtn.className = 'px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition';
+    if (modeToggleBtnMobile) {
+      modeToggleBtnMobile.textContent = 'Auto: 1s';
+      modeToggleBtnMobile.className = 'px-3 py-3 border border-indigo-200 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold shrink-0 shadow-xs';
+    }
   }
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'set_generation_mode', mode: mode }));
@@ -545,16 +537,6 @@ function handleWebSocketMessage(event) {
     // Immediately cut off previous question and start fresh for the next turn
     activeBubble = null;
     currentTurnAccumulator = [];
-
-    // Auto-switch to answers tab on mobile so mobile user sees the answer immediately
-    if (isMobile() && paneAnswers && paneAnswers.classList.contains('hidden')) {
-      paneAnswers.classList.remove('hidden');
-      if (paneTranscript) paneTranscript.classList.add('hidden');
-      if (mobileTabAnswersBtn && mobileTabTranscriptBtn) {
-        mobileTabAnswersBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-indigo-600 text-indigo-600 font-bold transition flex items-center justify-center gap-1.5 relative';
-        mobileTabTranscriptBtn.className = 'flex-1 py-1.5 text-center border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition flex items-center justify-center gap-1.5';
-      }
-    }
 
     detectedQuestionCard.classList.remove('hidden');
     detectedQuestionText.textContent = `"${data.question}"`;
