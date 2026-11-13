@@ -55,6 +55,18 @@ const paneTranscript = document.getElementById('paneTranscript');
 const paneAnswers = document.getElementById('paneAnswers');
 const toggleAudioBtnText = document.getElementById('toggleAudioBtnText');
 
+// In-Ear Audio Whisper (TTS) Elements
+const ttsToggleBtn = document.getElementById('ttsToggleBtn');
+const ttsToggleBtnText = document.getElementById('ttsToggleBtnText');
+const ttsSpeakingBadge = document.getElementById('ttsSpeakingBadge');
+const ttsSpeedGroup = document.getElementById('ttsSpeedGroup');
+const ttsStopBtn = document.getElementById('ttsStopBtn');
+const ttsSpeakCurrentBtn = document.getElementById('ttsSpeakCurrentBtn');
+
+let ttsEnabled = false;
+let ttsSpeed = 1.25; // Default 1.25x speed: brisk, natural, and efficient
+let currentUtterance = null;
+
 function isMobile() {
   return window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
@@ -71,6 +83,7 @@ window.addEventListener('DOMContentLoaded', () => {
   checkApiStatus();
   loadContext();
   setupEventListeners();
+  initTts();
 });
 
 function setSource(source) {
@@ -164,6 +177,38 @@ function setupEventListeners() {
     transcriptContainer.appendChild(emptyPlaceholder);
     emptyPlaceholder.classList.remove('hidden');
   });
+
+  // In-Ear Audio Whisper Listeners
+  if (ttsToggleBtn) {
+    ttsToggleBtn.addEventListener('click', () => {
+      setTtsEnabled(!ttsEnabled);
+    });
+  }
+
+  if (ttsSpeedGroup) {
+    ttsSpeedGroup.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tts-speed-btn');
+      if (btn) {
+        const speed = parseFloat(btn.getAttribute('data-speed'));
+        if (speed) setTtsSpeed(speed);
+      }
+    });
+  }
+
+  if (ttsStopBtn) {
+    ttsStopBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      stopWhisper();
+    });
+  }
+
+  if (ttsSpeakCurrentBtn) {
+    ttsSpeakCurrentBtn.addEventListener('click', () => {
+      if (currentAnswer) {
+        speakWhisper(currentAnswer);
+      }
+    });
+  }
 
   copyAnswerBtn.addEventListener('click', () => {
     if (currentAnswer) {
@@ -367,6 +412,149 @@ function triggerInstantAnswer() {
   }
 }
 
+// ==========================================
+// IN-EAR AUDIO WHISPER (TTS) SYSTEM
+// ==========================================
+function initTts() {
+  updateTtsUi();
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      // Pre-cache voices
+      window.speechSynthesis.getVoices();
+    };
+  }
+}
+
+function setTtsEnabled(enabled) {
+  ttsEnabled = enabled;
+  console.log('[Whisper] Enabled:', ttsEnabled);
+  if (!ttsEnabled) {
+    stopWhisper();
+  } else {
+    // Prime speech synthesis on user gesture for iOS Safari & Android Chrome
+    if ('speechSynthesis' in window) {
+      const silent = new SpeechSynthesisUtterance(' ');
+      silent.volume = 0.01;
+      window.speechSynthesis.speak(silent);
+    }
+  }
+  updateTtsUi();
+}
+
+function setTtsSpeed(speed) {
+  ttsSpeed = parseFloat(speed) || 1.25;
+  console.log('[Whisper] Speed set to:', ttsSpeed);
+  updateTtsUi();
+  // If actively whispering, restart at new speed
+  if ('speechSynthesis' in window && window.speechSynthesis.speaking && currentAnswer) {
+    speakWhisper(currentAnswer);
+  }
+}
+
+function updateTtsUi() {
+  if (ttsToggleBtn) {
+    if (ttsEnabled) {
+      ttsToggleBtn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-emerald-600 text-white shadow-xs';
+      if (ttsToggleBtnText) ttsToggleBtnText.textContent = 'Whisper: ON';
+    } else {
+      ttsToggleBtn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-slate-200 text-slate-700 hover:bg-slate-300 shadow-2xs';
+      if (ttsToggleBtnText) ttsToggleBtnText.textContent = 'Whisper: OFF';
+    }
+  }
+
+  // Update speed button visual states
+  const speedButtons = document.querySelectorAll('.tts-speed-btn');
+  speedButtons.forEach(btn => {
+    const spd = parseFloat(btn.getAttribute('data-speed'));
+    if (Math.abs(spd - ttsSpeed) < 0.05) {
+      btn.className = 'tts-speed-btn px-2 py-0.5 rounded bg-indigo-600 text-white shadow-xs font-bold transition';
+    } else {
+      btn.className = 'tts-speed-btn px-2 py-0.5 rounded text-slate-600 hover:text-slate-900 transition';
+    }
+  });
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function stopWhisper() {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  if (ttsSpeakingBadge) ttsSpeakingBadge.classList.add('hidden');
+  if (ttsStopBtn) ttsStopBtn.classList.add('hidden');
+}
+
+function cleanTextForSpeech(text) {
+  if (!text) return '';
+  return text
+    .replace(/[#*_~`>-]/g, ' ')               // Remove markdown symbols like **, #, -, `
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')  // Markdown links [text](url) -> text
+    .replace(/^\s*[\d•]+\.?\s+/gm, '')        // Remove list numbers & bullets at line starts
+    .replace(/\s+/g, ' ')                     // Normalize whitespaces
+    .trim();
+}
+
+function getBestVoice() {
+  if (!('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices || voices.length === 0) return null;
+
+  // Prioritize natural sounding English voices
+  const preferred = voices.find(v => 
+    v.lang.startsWith('en') && (
+      v.name.includes('Natural') || 
+      v.name.includes('Google') || 
+      v.name.includes('Samantha') || 
+      v.name.includes('Karen') || 
+      v.name.includes('Daniel') || 
+      v.name.includes('Alex')
+    )
+  );
+  if (preferred) return preferred;
+  return voices.find(v => v.lang.startsWith('en')) || voices[0];
+}
+
+function speakWhisper(text) {
+  if (!('speechSynthesis' in window)) {
+    console.warn('[Whisper] Speech synthesis not supported in this browser.');
+    return;
+  }
+  stopWhisper();
+
+  const clean = cleanTextForSpeech(text);
+  if (!clean) return;
+
+  const utterance = new SpeechSynthesisUtterance(clean);
+  utterance.rate = ttsSpeed;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
+
+  const bestVoice = getBestVoice();
+  if (bestVoice) {
+    utterance.voice = bestVoice;
+  }
+
+  utterance.onstart = () => {
+    if (ttsSpeakingBadge) ttsSpeakingBadge.classList.remove('hidden');
+    if (ttsStopBtn) ttsStopBtn.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  };
+
+  utterance.onend = () => {
+    if (ttsSpeakingBadge) ttsSpeakingBadge.classList.add('hidden');
+    if (ttsStopBtn) ttsStopBtn.classList.add('hidden');
+  };
+
+  utterance.onerror = (e) => {
+    console.warn('[Whisper] Speech error:', e);
+    if (ttsSpeakingBadge) ttsSpeakingBadge.classList.add('hidden');
+    if (ttsStopBtn) ttsStopBtn.classList.add('hidden');
+  };
+
+  currentUtterance = utterance;
+  window.speechSynthesis.speak(utterance);
+}
+
 // 3. Audio Recording Engine
 async function toggleRecording() {
   if (isRecording) {
@@ -507,6 +695,7 @@ function setupAudioProcessing() {
 
 function stopRecording() {
   isRecording = false;
+  stopWhisper();
 
   if (scriptProcessor) {
     scriptProcessor.disconnect();
@@ -545,6 +734,7 @@ function handleWebSocketMessage(event) {
   }
 
   if (data.type === 'answer_start') {
+    stopWhisper();
     activeQuestionText = data.question;
     currentAnswer = '';
 
@@ -586,6 +776,11 @@ function handleWebSocketMessage(event) {
     copyAnswerBtn.disabled = false;
 
     addToHistory(activeQuestionText, currentAnswer);
+
+    // In-Ear Audio Whisper (speaks into connected Bluetooth earbuds if enabled)
+    if (ttsEnabled && currentAnswer) {
+      speakWhisper(currentAnswer);
+    }
   }
 
   if (data.type === 'answer_error' || data.type === 'system_error') {
