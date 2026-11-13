@@ -28,6 +28,10 @@
       height: 100%;
       overscroll-behavior: none;
     }
+    .teleprompter-feed {
+      padding-top: 42vh !important;
+      padding-bottom: 50vh !important;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
@@ -142,11 +146,45 @@
 
     roomIdDisplay.textContent = roomId;
 
-    // Auto-scroll helper: keeps view pinned to the bottom as text appears
-    function scrollToBottom() {
-      if (specScrollContainer) {
-        specScrollContainer.scrollTop = specScrollContainer.scrollHeight;
+    // Center-scrolling teleprompter engine: keeps active reading line pinned at vertical center
+    function scrollActiveToCenter() {
+      if (!specScrollContainer || !specFeed) return;
+
+      if (!specFeed.classList.contains('teleprompter-feed')) {
+        specFeed.classList.add('teleprompter-feed');
       }
+
+      const targetEl = activeAiBlock || activeSpecBubble;
+      if (!targetEl) {
+        const lastChild = specFeed.lastElementChild;
+        if (lastChild && lastChild !== specEmptyPlaceholder) {
+          const containerRect = specScrollContainer.getBoundingClientRect();
+          const targetRect = lastChild.getBoundingClientRect();
+          const targetCenterY = containerRect.top + (containerRect.height * 0.46);
+          const currentPointY = targetRect.bottom;
+          specScrollContainer.scrollTop += (currentPointY - targetCenterY);
+        }
+        return;
+      }
+
+      // Locate active typing point (cursor or bottom of text block)
+      const cursor = targetEl.querySelector('.animate-pulse') || targetEl.querySelector('.spec-bubble-text') || targetEl;
+      const containerRect = specScrollContainer.getBoundingClientRect();
+      const pointRect = cursor.getBoundingClientRect();
+
+      // Desired vertical center line: 46% of container height (natural eye level)
+      const targetCenterY = containerRect.top + (containerRect.height * 0.46);
+      const currentPointY = pointRect.bottom;
+      const deltaY = currentPointY - targetCenterY;
+
+      if (Math.abs(deltaY) > 1) {
+        specScrollContainer.scrollTop += deltaY;
+      }
+    }
+
+    // Keep scrollToBottom as alias to guarantee backwards-compatibility
+    function scrollToBottom() {
+      scrollActiveToCenter();
     }
 
     function connectSpectator() {
@@ -285,18 +323,18 @@
 
       if (!activeSpecBubble) {
         activeSpecBubble = document.createElement('div');
-        activeSpecBubble.className = 'p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5 transition';
+        activeSpecBubble.className = 'p-3.5 bg-white border-2 border-indigo-500/70 shadow-sm rounded-xl space-y-1.5 transition-all';
         const initial = speakerLabel.charAt(0).toUpperCase();
         activeSpecBubble.innerHTML = `
           <div class="flex items-center justify-between text-xs text-slate-500">
             <span class="font-bold text-slate-800 flex items-center gap-1.5">
               <span class="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-extrabold flex items-center justify-center">${initial}</span>
-              <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+              <span class="spec-dot w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
               <span>${escapeHtml(speakerLabel)}</span>
             </span>
             <span class="font-mono text-[10px] text-slate-400">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
-          <p class="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium spec-bubble-text"></p>
+          <p class="text-xs sm:text-sm text-slate-800 leading-relaxed font-semibold spec-bubble-text"></p>
         `;
         specFeed.appendChild(activeSpecBubble);
         specTurnAccumulator = [];
@@ -320,11 +358,12 @@
       }
 
       if (isFinal) {
-        const dot = activeSpecBubble.querySelector('.animate-ping');
+        const dot = activeSpecBubble.querySelector('.spec-dot');
         if (dot) dot.classList.remove('animate-ping');
         const trimmed = text.trim();
         const wordCount = fullText.trim().split(/\s+/).filter(Boolean).length;
         if (trimmed.endsWith('?') || wordCount >= 30) {
+          activeSpecBubble.className = 'p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5 transition opacity-80';
           activeSpecBubble = null;
           specTurnAccumulator = [];
         }

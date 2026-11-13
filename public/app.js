@@ -1076,6 +1076,8 @@ function renderLiveTranscript(text, isFinal, speakerId) {
   }
   lastBubbleTime = now;
 
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
   if (!activeBubble) {
     activeBubble = document.createElement('div');
     activeBubble.className = 'bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 hover:bg-slate-100/60 transition';
