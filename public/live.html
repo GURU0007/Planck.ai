@@ -104,6 +104,12 @@
 
     <!-- Spectator Status Controls -->
     <div class="flex items-center gap-1.5 shrink-0">
+      <!-- 1-Click Capture Google Meet Audio Button -->
+      <button id="liveCaptureMeetBtn" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 transition shrink-0" title="Capture interviewer voice from Google Meet tab (zero candidate mic)">
+        <i data-lucide="headphones" class="w-3.5 h-3.5 text-white"></i>
+        <span id="liveCaptureBtnText">Capture Google Meet Audio</span>
+      </button>
+
       <!-- Live Room Badge -->
       <div class="hidden sm:flex items-center gap-1 bg-slate-900/90 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg text-xs font-mono font-semibold shrink-0 cursor-pointer hover:border-slate-700 transition" title="Click to switch Room ID" id="roomIdDisplayBox">
         <span class="text-slate-500">Room:</span>
@@ -162,9 +168,20 @@
       <!-- Liquid Silk Live Question Text -->
       <div class="min-h-[38px] flex items-center">
         <p id="qaLiveSpeechText" class="text-sm sm:text-base md:text-lg font-bold text-white leading-snug break-words">
-          <span class="text-slate-500 font-normal italic text-sm">Listening for interviewer's question... (Your mic is excluded)</span>
+          <span class="text-slate-400 font-normal italic text-sm">Waiting for interviewer's question... (Candidate mic is 100% excluded)</span>
           <span class="inline-block w-1.5 h-4 bg-indigo-500 ml-1.5 align-middle animate-pulse rounded-2xs"></span>
         </p>
+      </div>
+
+      <!-- Quick Step Instruction Banner -->
+      <div id="liveStepGuide" class="mt-2.5 pt-2.5 border-t border-slate-800/80 text-[11px] text-slate-300 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span>Click <strong>"Capture Google Meet Audio"</strong> above &bull; Pick your Google Meet tab &bull; Check <em>"Also share tab audio"</em></span>
+        </div>
+        <button id="guideCaptureBtn" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition">
+          Start Capture
+        </button>
       </div>
     </div>
 
@@ -792,6 +809,186 @@
           }
         });
       }
+    }
+
+    // ========================================================
+    // DIRECT GOOGLE MEET TAB AUDIO CAPTURE ENGINE
+    // ========================================================
+    let isCapturingAudio = false;
+    let liveAudioStream = null;
+    let liveAudioCtx = null;
+    let liveProcessor = null;
+    let liveHostWs = null;
+
+    const liveCaptureMeetBtn = document.getElementById('liveCaptureMeetBtn');
+    const liveCaptureBtnText = document.getElementById('liveCaptureBtnText');
+    const guideCaptureBtn = document.getElementById('guideCaptureBtn');
+    const liveStepGuide = document.getElementById('liveStepGuide');
+
+    if (guideCaptureBtn && liveCaptureMeetBtn) {
+      guideCaptureBtn.addEventListener('click', () => liveCaptureMeetBtn.click());
+    }
+
+    if (liveCaptureMeetBtn) {
+      liveCaptureMeetBtn.addEventListener('click', async () => {
+        if (isCapturingAudio) {
+          stopLiveCapture();
+        } else {
+          await startLiveCapture();
+        }
+      });
+    }
+
+    async function startLiveCapture() {
+      try {
+        console.log('[Live Capture] Requesting Google Meet tab audio...');
+        liveAudioStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: {
+            channelCount: 1,
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          }
+        });
+
+        // Immediately drop video tracks to preserve CPU & bandwidth
+        liveAudioStream.getVideoTracks().forEach(t => t.stop());
+
+        const audioTracks = liveAudioStream.getAudioTracks();
+        if (audioTracks.length === 0) {
+          alert("Google Meet audio was not shared!\n\nWhen selecting your Google Meet tab in the browser popup, make sure the checkbox 'Also share tab audio' (at bottom-left) is checked.");
+          stopLiveCapture();
+          return;
+        }
+
+        liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        await liveAudioCtx.resume();
+        const sampleRate = liveAudioCtx.sampleRate;
+
+        // Disconnect spectator WS so we don't get double messages
+        if (specWs) {
+          try { specWs.close(); } catch (e) {}
+          specWs = null;
+        }
+
+        // Connect as Host WS to stream audio directly
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        let wsUrl = `${protocol}//${window.location.host}/ws?sampleRate=${sampleRate}&roomId=${encodeURIComponent(roomId)}`;
+        if (roomPin) wsUrl += `&pin=${encodeURIComponent(roomPin)}`;
+
+        liveHostWs = new WebSocket(wsUrl);
+        liveHostWs.binaryType = 'arraybuffer';
+
+        liveHostWs.onopen = () => {
+          console.log('[Live Capture] Host WebSocket active! Setting up audio processor...');
+          setupLiveAudioProcessing();
+
+          isCapturingAudio = true;
+          liveCaptureMeetBtn.className = 'bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/25 transition shrink-0';
+          liveCaptureBtnText.textContent = 'Stop Capturing Meet';
+
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0';
+          hostStatusText.textContent = 'Meet Audio Active';
+
+          if (liveStepGuide) {
+            liveStepGuide.innerHTML = '<span class="text-emerald-400 font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Capturing Google Meet audio in real time. Your microphone is completely ignored.</span>';
+          }
+          if (window.lucide) lucide.createIcons();
+        };
+
+        liveHostWs.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            handleSpectatorMessage(data); // Feed questions & instant answers directly to HUD!
+          } catch (e) {
+            console.error('[Live Capture] Parse error:', e);
+          }
+        };
+
+        liveHostWs.onclose = () => {
+          if (isCapturingAudio) stopLiveCapture();
+        };
+
+        audioTracks[0].onended = () => {
+          console.log('[Live Capture] Google Meet tab audio track ended by user');
+          stopLiveCapture();
+        };
+
+      } catch (err) {
+        console.warn('[Live Capture] Tab capture cancelled or error:', err);
+        stopLiveCapture();
+      }
+    }
+
+    function setupLiveAudioProcessing() {
+      if (!liveAudioCtx || !liveAudioStream) return;
+      const source = liveAudioCtx.createMediaStreamSource(liveAudioStream);
+      liveProcessor = liveAudioCtx.createScriptProcessor(4096, 1, 1);
+
+      const muteGain = liveAudioCtx.createGain();
+      muteGain.gain.value = 0;
+
+      source.connect(liveProcessor);
+      liveProcessor.connect(muteGain);
+      muteGain.connect(liveAudioCtx.destination);
+
+      liveProcessor.onaudioprocess = (e) => {
+        if (!isCapturingAudio || !liveHostWs || liveHostWs.readyState !== WebSocket.OPEN) return;
+        const inputData = e.inputBuffer.getChannelData(0);
+
+        // Convert Float32 to Int16 PCM
+        const pcm16 = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+
+        liveHostWs.send(pcm16.buffer);
+      };
+    }
+
+    function stopLiveCapture() {
+      isCapturingAudio = false;
+
+      if (liveProcessor) {
+        try { liveProcessor.disconnect(); } catch (e) {}
+        liveProcessor = null;
+      }
+      if (liveAudioCtx && liveAudioCtx.state !== 'closed') {
+        try { liveAudioCtx.close(); } catch (e) {}
+        liveAudioCtx = null;
+      }
+      if (liveAudioStream) {
+        try { liveAudioStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+        liveAudioStream = null;
+      }
+      if (liveHostWs) {
+        try { liveHostWs.close(); } catch (e) {}
+        liveHostWs = null;
+      }
+
+      if (liveCaptureMeetBtn) {
+        liveCaptureMeetBtn.className = 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 transition shrink-0';
+        liveCaptureBtnText.textContent = 'Capture Google Meet Audio';
+      }
+
+      if (liveStepGuide) {
+        liveStepGuide.innerHTML = `
+          <div class="flex items-center gap-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>Click <strong>"Capture Google Meet Audio"</strong> above &bull; Pick your Google Meet tab &bull; Check <em>"Also share tab audio"</em></span>
+          </div>
+          <button id="guideCaptureBtn" onclick="document.getElementById('liveCaptureMeetBtn').click()" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition">
+            Start Capture
+          </button>
+        `;
+      }
+
+      // Reconnect spectator WS to listen for any external audio stream
+      connectSpectator();
+      if (window.lucide) lucide.createIcons();
     }
 
     // Auto-connect
