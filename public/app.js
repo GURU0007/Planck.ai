@@ -101,7 +101,17 @@ if (window.pdfjsLib) {
 // 1. Initial Checks & Setup
 window.addEventListener('DOMContentLoaded', () => {
   // Mobile check: force Mic mode, hide tab sharing (not supported on mobile OS)
-  setSource('mic');
+  let initialSource = 'tab'; // Default to original Google Voice / Call testing mode on desktop!
+  try {
+    const saved = localStorage.getItem('planck_audio_source');
+    if (saved === 'mic' || saved === 'tab') initialSource = saved;
+  } catch (e) {}
+
+  if (isMobile()) {
+    initialSource = 'mic';
+  }
+
+  setSource(initialSource);
   checkApiStatus();
   loadContext();
   setupEventListeners();
@@ -110,13 +120,46 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function setSource(source) {
   currentSource = source;
-  if (source === 'mic') {
-    sourceMicBtn.className = 'px-3 py-1.5 rounded-md font-medium bg-white text-indigo-600 shadow-sm transition';
-    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition';
-  } else {
-    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-medium bg-white text-indigo-600 shadow-sm transition';
+  try { localStorage.setItem('planck_audio_source', source); } catch (e) {}
+
+  const placeholderText = document.getElementById('emptyPlaceholderText');
+  const placeholderIcon = document.getElementById('emptyPlaceholderIcon');
+
+  if (source === 'tab') {
+    // 1. ORIGINAL INTERVIEW COPILOT: Google Voice / Call Audio Capture
+    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-semibold bg-white text-indigo-600 shadow-sm transition';
     sourceMicBtn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition';
+
+    if (!isRecording) {
+      toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+      toggleAudioBtn.innerHTML = '<i data-lucide="headphones" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Listening</span><span class="sm:hidden">Listen</span>';
+    }
+
+    if (placeholderText) {
+      placeholderText.innerHTML = 'Select your <strong>Google Voice or Call tab</strong> and click <strong>"Start Listening"</strong>. Questions will stream and generate instant AI talking points.';
+    }
+    if (placeholderIcon) {
+      placeholderIcon.setAttribute('data-lucide', 'headphones');
+    }
+  } else {
+    // 2. OTTER LIVE MODE: Microphone Speech & Instant Live Share
+    sourceMicBtn.className = 'px-3 py-1.5 rounded-md font-semibold bg-white text-indigo-600 shadow-sm transition';
+    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition';
+
+    if (!isRecording) {
+      toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+      toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Speaking</span><span class="sm:hidden">Speak</span>';
+    }
+
+    if (placeholderText) {
+      placeholderText.innerHTML = 'Click <strong>"Start Speaking"</strong> to talk into your microphone (Otter mode). Click <strong>"Share Live"</strong> to let others watch you speak in real-time.';
+    }
+    if (placeholderIcon) {
+      placeholderIcon.setAttribute('data-lucide', 'mic');
+    }
   }
+
+  if (window.lucide) lucide.createIcons();
 }
 
 async function checkApiStatus() {
@@ -714,7 +757,7 @@ async function startRecording() {
         }
       } catch (err) {
         if (err.message === 'NO_TAB_AUDIO') {
-          alert("Tab audio was not shared! When selecting a meeting or browser tab, make sure the checkbox 'Also share tab audio' (at bottom-left) is checked.");
+          alert("Google Voice tab audio was not shared! When selecting your Google Voice or Meeting tab in the browser popup, make sure the checkbox 'Also share tab audio' (at bottom-left) is checked.");
         } else if (err.name !== 'NotAllowedError') {
           console.warn('[Audio] Tab capture cancelled or error:', err);
         }
@@ -814,7 +857,11 @@ function setupAudioProcessing() {
   // Update UI to recording state
   isRecording = true;
   toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
-  toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Speaking</span><span class="sm:hidden">Stop</span>';
+  if (currentSource === 'tab') {
+    toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Listening</span><span class="sm:hidden">Stop</span>';
+  } else {
+    toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Speaking</span><span class="sm:hidden">Stop</span>';
+  }
   recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping';
   lucide.createIcons();
 
@@ -846,7 +893,11 @@ function stopRecording() {
 
   // Reset UI
   toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
-  toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Speaking</span><span class="sm:hidden">Speak</span>';
+  if (currentSource === 'tab') {
+    toggleAudioBtn.innerHTML = '<i data-lucide="headphones" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Listening</span><span class="sm:hidden">Listen</span>';
+  } else {
+    toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Speaking</span><span class="sm:hidden">Speak</span>';
+  }
   recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
   audioMeterText.textContent = '0 dB';
   interimBar.classList.add('hidden');
@@ -950,15 +1001,18 @@ let lastBubbleTime = 0;
 function renderLiveTranscript(text, isFinal, speakerId) {
   emptyPlaceholder.classList.add('hidden');
 
-  let speakerLabel = 'You (Speaker)';
+  let speakerLabel = 'Speaker';
   let badgeColor = 'bg-indigo-500';
 
   if (currentSource === 'tab') {
-    speakerLabel = 'Meeting / Call Audio';
+    speakerLabel = 'Interviewer (Google Voice)';
     badgeColor = 'bg-indigo-600';
   } else if (speakerId !== null && speakerId !== undefined) {
     speakerLabel = `Speaker ${speakerId + 1}`;
     badgeColor = speakerId % 2 === 0 ? 'bg-indigo-500' : 'bg-emerald-500';
+  } else {
+    speakerLabel = 'You (Speaker)';
+    badgeColor = 'bg-indigo-500';
   }
 
   const now = Date.now();

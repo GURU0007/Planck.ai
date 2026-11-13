@@ -54,26 +54,26 @@
 
     <!-- AUDIO CONTROLS & STATUS -->
     <div class="flex items-center space-x-2 sm:space-x-3">
-      <!-- Audio Source Selector (Desktop Only) -->
+      <!-- Dual Mode Selector: Google Voice Call Interceptor vs Otter Live Mic (Desktop Only) -->
       <div id="audioSourceSelector" class="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 text-xs shrink-0">
-        <button id="sourceMicBtn" class="px-3 py-1.5 rounded-md font-semibold bg-white text-indigo-600 shadow-sm transition">
-          <i data-lucide="mic" class="w-3.5 h-3.5 inline mr-1"></i>Microphone
+        <button id="sourceTabBtn" class="px-3 py-1.5 rounded-md font-semibold bg-white text-indigo-600 shadow-sm transition" title="Interview Copilot: Intercept Google Voice, Zoom, or Teams call audio">
+          <i data-lucide="headphones" class="w-3.5 h-3.5 inline mr-1"></i>Google Voice / Call
         </button>
-        <button id="sourceTabBtn" class="px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition" title="Optional: Capture audio from another browser tab or meeting">
-          <i data-lucide="monitor" class="w-3.5 h-3.5 inline mr-1"></i>Tab / System Audio
+        <button id="sourceMicBtn" class="px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition" title="Otter Mode: Speak directly into your microphone and share live link">
+          <i data-lucide="mic" class="w-3.5 h-3.5 inline mr-1"></i>Otter Mic (Live Share)
         </button>
       </div>
 
       <!-- Mobile Microphone Indicator (Mobile Only) -->
       <div id="mobileMicBadge" class="flex md:hidden items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0" title="Audio uses your device microphone">
         <i data-lucide="mic" class="w-3.5 h-3.5 text-indigo-600"></i>
-        <span>Mic</span>
+        <span>Mic Mode</span>
       </div>
 
-      <!-- Primary Action Button: Start Speaking / Record -->
+      <!-- Dynamic Action Button: Changes dynamically between "Start Listening" and "Start Speaking" -->
       <button id="toggleAudioBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0">
-        <i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
-        <span id="toggleAudioBtnText">Start Speaking</span>
+        <i data-lucide="headphones" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        <span id="toggleAudioBtnText">Start Listening</span>
       </button>
 
       <!-- Otter-style Live Share Button -->
@@ -124,10 +124,10 @@
         <!-- Placeholder / Empty State -->
         <div id="emptyTranscriptPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-1">
           <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-            <i data-lucide="mic" class="w-4 h-4 text-indigo-500"></i>
+            <i id="emptyPlaceholderIcon" data-lucide="headphones" class="w-4 h-4 text-indigo-500"></i>
           </div>
-          <p class="text-[11px] sm:text-xs text-center max-w-xs px-2">
-            Click <strong>"Start Speaking"</strong> above. Speak into your microphone and your conversation will transcribe and scroll up here.
+          <p id="emptyPlaceholderText" class="text-[11px] sm:text-xs text-center max-w-xs px-2">
+            Select <strong>"Google Voice / Call"</strong> to listen to interviewer questions, or <strong>"Otter Mic"</strong> to speak and share live.
           </p>
         </div>
       </div>
