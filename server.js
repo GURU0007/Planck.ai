@@ -36,6 +36,38 @@ app.get('/live', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live.html'));
 });
 
+// Download Standalone Stealth Launcher (.bat) configured for user's room (LockedIn AI style)
+app.get('/download/stealth', (req, res) => {
+  const host = req.get('host') || 'planck-ai.onrender.com';
+  const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+  const roomId = (req.query.room || 'main_room').trim();
+  const targetUrl = `${protocol}://${host}/live?room=${encodeURIComponent(roomId)}`;
+
+  const batContent = `@echo off
+title Planck.ai Stealth Copilot
+set "TARGET_URL=${targetUrl}"
+
+echo ========================================================
+echo  [Planck.ai] Launching Standalone Stealth Q^&A Copilot...
+echo  - Target: %TARGET_URL%
+echo  - Invisible to Zoom, Teams ^& Google Meet screen-share
+echo ========================================================
+
+if exist "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" (
+    start "" "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --app="%TARGET_URL%" --window-size=580,640
+) else if exist "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" (
+    start "" "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" --app="%TARGET_URL%" --window-size=580,640
+) else (
+    start "" "%TARGET_URL%"
+)
+exit
+`;
+
+  res.setHeader('Content-Disposition', 'attachment; filename="planck-stealth.bat"');
+  res.setHeader('Content-Type', 'application/x-bat');
+  res.send(batContent);
+});
+
 // High-Priority Software & Tech Keywords
 const SOFTWARE_KEYWORDS = [
   'Spring Boot:5', 'Spring:4', 'Kubernetes:5', 'Docker:5', 'PostgreSQL:5', 'Postgres:4',

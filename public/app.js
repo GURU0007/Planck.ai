@@ -534,6 +534,10 @@ function updateShareModalInfo() {
   if (sharePinInput) {
     sharePinInput.value = hostRoomPin;
   }
+  const downloadBtns = document.querySelectorAll('a[href^="/download/stealth"]');
+  downloadBtns.forEach(btn => {
+    btn.href = `/download/stealth?room=${encodeURIComponent(hostRoomId)}`;
+  });
 }
 
 function copyShareLinkBtnAction() {

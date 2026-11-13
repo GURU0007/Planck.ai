@@ -96,6 +96,13 @@
         <span id="toggleAudioBtnText">Start Listening</span>
       </button>
 
+      <!-- Stealth Desktop App Launcher (LockedIn AI Style) -->
+      <a id="downloadStealthHeaderBtn" href="/download/stealth" download="planck-stealth.bat" class="border border-indigo-300 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-2.5 sm:px-3 py-1.5 rounded-lg transition text-xs font-bold flex items-center gap-1.5 shadow-xs shrink-0" title="Download standalone invisible stealth app (.bat) - Zero installation required">
+        <i data-lucide="shield" class="w-3.5 h-3.5 text-amber-300"></i>
+        <span class="hidden sm:inline">Stealth App (.bat)</span>
+        <span class="sm:hidden">Stealth</span>
+      </a>
+
       <!-- Otter-style Live Share Button -->
       <button id="openShareModalBtn" type="button" class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 sm:px-3 py-1.5 rounded-lg transition text-xs font-semibold flex items-center gap-1.5 shadow-xs shrink-0" title="Share real-time spectator link">
         <i data-lucide="share-2" class="w-3.5 h-3.5 text-indigo-600"></i>
@@ -358,6 +365,29 @@
       </div>
 
       <div class="p-5 space-y-4">
+        <!-- LockedIn AI-Style Standalone Stealth Companion Card -->
+        <div class="bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 border border-indigo-200 rounded-2xl p-4 text-xs space-y-2.5 shadow-2xs">
+          <div class="flex items-center justify-between">
+            <div class="font-bold text-slate-900 flex items-center gap-1.5 text-sm">
+              <i data-lucide="shield" class="w-4 h-4 text-indigo-600"></i>
+              <span>LockedIn-Style Stealth Companion</span>
+            </div>
+            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Zero Install</span>
+          </div>
+          <p class="text-slate-600 text-xs leading-relaxed">
+            Run an independent, floating Q&A prompter window that stays locked at eye level and is invisible on Zoom/Teams screen-sharing.
+          </p>
+          <div class="bg-white/80 p-2 rounded-xl border border-indigo-100 space-y-1 text-[11px] text-slate-700">
+            <div>1. Click <strong>Download .bat</strong> (saves <code>planck-stealth.bat</code>).</div>
+            <div>2. Click <strong>"Start Listening"</strong> with call tab selected.</div>
+            <div>3. Double-click <code>planck-stealth.bat</code> to see realtime answers!</div>
+          </div>
+          <a href="/download/stealth" download="planck-stealth.bat" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-bold py-2 rounded-xl shadow-xs flex items-center justify-center gap-2 transition text-xs">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Download Stealth Companion (.bat)</span>
+          </a>
+        </div>
+
         <!-- Otter-style How It Works Card -->
         <div class="bg-indigo-50/80 border border-indigo-100 rounded-xl p-3 text-xs space-y-1">
           <div class="font-bold text-indigo-950 flex items-center gap-1.5">
