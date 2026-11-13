@@ -9,33 +9,33 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    /* Custom clean scrollbar for history */
-    ::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+    /* Custom visible clean scrollbar for upper prompt history */
+    #historyScrollContainer::-webkit-scrollbar {
+      width: 6px;
     }
-    ::-webkit-scrollbar-track {
-      background: transparent;
+    #historyScrollContainer::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 4px;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #e2e8f0;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
+    #historyScrollContainer::-webkit-scrollbar-thumb {
       background: #cbd5e1;
+      border-radius: 4px;
+    }
+    #historyScrollContainer::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
     }
     html, body {
       height: 100%;
       overscroll-behavior: none;
     }
-    /* Elegant top fade mask for previous rolled-up prompts */
+    /* Elegant top fade mask for older rolled-up prompts */
     .mask-top-fade {
-      mask-image: linear-gradient(to bottom, transparent 0%, black 20%);
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
+<body class="bg-slate-100 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden select-none">
 
   <!-- TOP SPECTATOR HEADER -->
   <header class="bg-white border-b border-slate-200 px-4 sm:px-8 py-2.5 flex items-center justify-between shrink-0 shadow-2xs z-20">
@@ -103,19 +103,21 @@
     <!-- MIDDLE 1/3: PURE TELEPROMPTER STAGE -->
     <div class="w-full md:w-1/3 h-full flex flex-col justify-between relative overflow-hidden bg-white border-x border-slate-200/80 shadow-sm">
       
-      <!-- TOP 50%: PREVIOUS PROMPTS (SCROLLS UPWARD TOWARD TOP, SOFT MUTED/FADED) -->
-      <div id="historyScrollContainer" class="flex-1 w-full overflow-y-auto px-6 sm:px-8 py-4 flex flex-col justify-end mask-top-fade">
-        <div id="historyFeed" class="space-y-3.5 text-slate-400 text-sm sm:text-base leading-relaxed font-normal">
-          <!-- Finalized speech rolls up here into history -->
+      <!-- TOP 50%: PREVIOUS CONTINUOUS PROMPTS (SCROLLABLE, NATURALLY FLOWING SENTENCES SEPARATED BY FULL STOPS) -->
+      <div id="historyScrollContainer" class="flex-1 w-full overflow-y-auto px-6 sm:px-10 py-5 mask-top-fade overscroll-contain select-text">
+        <div id="historyFeed" class="min-h-full flex flex-col">
+          <div id="continuousTextFlow" class="mt-auto space-y-4 text-slate-400 text-base sm:text-lg leading-relaxed font-normal">
+            <!-- Continuous speech sentences roll up here separated by full stops -->
+          </div>
         </div>
       </div>
 
       <!-- EXACT VERTICAL CENTER LINE: FRESH PROMPT (LOCKED AT EYE LEVEL) -->
-      <div id="centerPromptArea" class="w-full px-6 sm:px-8 py-5 bg-white z-10 shrink-0 border-t border-b border-indigo-100/70">
+      <div id="centerPromptArea" class="w-full px-6 sm:px-10 py-5 bg-white z-10 shrink-0 border-t border-b border-indigo-100/70">
         <div class="flex items-start">
-          <p id="liveCenterPrompt" class="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 leading-relaxed break-words flex-1">
-            <span id="centerPromptText" class="text-slate-400 font-normal italic text-sm sm:text-base">Waiting for speech... Words will appear here in the center</span>
-            <span id="centerPromptCursor" class="inline-block w-2 h-5 sm:h-6 bg-indigo-600 ml-1.5 align-middle animate-pulse rounded-xs"></span>
+          <p id="liveCenterPrompt" class="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed break-words flex-1">
+            <span id="centerPromptText" class="text-slate-400 font-normal italic text-base sm:text-lg">Waiting for speech... Words will appear here in the center</span>
+            <span id="centerPromptCursor" class="inline-block w-2.5 h-6 bg-indigo-600 ml-1.5 align-middle animate-pulse rounded-xs"></span>
           </p>
         </div>
 
@@ -164,7 +166,7 @@
 
     // Teleprompter DOM Elements
     const historyScrollContainer = document.getElementById('historyScrollContainer');
-    const historyFeed = document.getElementById('historyFeed');
+    const continuousTextFlow = document.getElementById('continuousTextFlow');
     const centerPromptText = document.getElementById('centerPromptText');
     const centerPromptCursor = document.getElementById('centerPromptCursor');
     const centerAiWrapper = document.getElementById('centerAiWrapper');
@@ -172,11 +174,21 @@
 
     roomIdDisplay.textContent = roomId;
 
-    // Active Turn State
+    // Active Continuous Prompt State
     let isInitialWaiting = true;
     let accumulatedPromptWords = [];
     let lastChunkTime = 0;
+    let currentParagraph = null;
+    let sentenceCountInParagraph = 0;
+    let lastSentenceTime = 0;
     let currentAiAnswerText = '';
+
+    // Scrollability & Manual Scroll Detection
+    let isUserScrolledUp = false;
+    historyScrollContainer.addEventListener('scroll', () => {
+      const distanceToBottom = historyScrollContainer.scrollHeight - historyScrollContainer.scrollTop - historyScrollContainer.clientHeight;
+      isUserScrolledUp = distanceToBottom > 40;
+    });
 
     function connectSpectator() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -235,7 +247,7 @@
           hostStatusText.textContent = 'Host Standing By';
         }
 
-        // Render past history turns into top history container
+        // Render past history turns into continuous natural paragraphs
         if (data.history && data.history.length > 0) {
           data.history.forEach(turn => {
             if (turn.question) rollPromptUpToHistory(turn.question);
@@ -282,7 +294,7 @@
 
     // 1. LIVE CENTER PROMPTER ENGINE:
     // Prompt is locked in the EXACT CENTER. Once it completes a certain length (~12-14 words or punctuation),
-    // it rolls UP to history, and fresh prompt begins in the center. Down is never used!
+    // it rolls UP to history, joining the continuous paragraph separated by full stops. Down is never used!
     function handleCenterTranscript(text, isFinal) {
       if (!text || !text.trim()) return;
 
@@ -315,12 +327,12 @@
       const isSentenceEnd = activeDisplay.endsWith('.') || activeDisplay.endsWith('?') || activeDisplay.endsWith('!');
 
       if (isFinal && (wordCount >= 12 || isSentenceEnd)) {
-        // Roll up to top history!
+        // Roll up into continuous flowing paragraph!
         rollPromptUpToHistory(activeDisplay);
         accumulatedPromptWords = [];
         centerPromptText.textContent = '';
       } else if (!isFinal && wordCount >= 18) {
-        // Interim speech exceeded 18 words without pause: roll first 12 words up to top!
+        // Interim speech exceeded 18 words without pause: roll first 12 words up to continuous paragraph!
         const words = activeDisplay.split(/\s+/).filter(Boolean);
         const rollWords = words.slice(0, 12).join(' ');
         const keepWords = words.slice(12).join(' ');
@@ -330,25 +342,55 @@
       }
     }
 
-    // 2. ROLL UP TO TOP HISTORY (Muted slate-400 font, rolling upward):
+    // 2. ROLL UP INTO CONTINUOUS PARAGRAPHS SEPARATED BY FULL STOPS:
+    // No bullet fragmentation! Sentences join naturally in a continuous flowing paragraph.
     function rollPromptUpToHistory(completedText) {
       if (!completedText || !completedText.trim()) return;
-      const p = document.createElement('p');
-      p.className = 'text-slate-400 hover:text-slate-600 text-sm sm:text-base leading-relaxed transition-colors';
-      p.textContent = completedText.trim();
-      historyFeed.appendChild(p);
 
-      // Scroll top container to bottom so newest rolled-up line sits right above the center
-      historyScrollContainer.scrollTop = historyScrollContainer.scrollHeight;
+      let sentence = completedText.trim();
+      // Ensure sentence ends with a full stop / punctuation
+      if (!/[.?!]$/.test(sentence)) {
+        sentence += '.';
+      }
+      // Capitalize first letter of sentence
+      sentence = sentence.charAt(0).toUpperCase() + sentence.slice(1);
+
+      const now = Date.now();
+      const isLongPause = (now - lastSentenceTime > 5500);
+
+      // Start a new paragraph after a long pause (> 5.5s) or after 4 sentences
+      if (!currentParagraph || isLongPause || sentenceCountInParagraph >= 4) {
+        currentParagraph = document.createElement('p');
+        currentParagraph.className = 'text-slate-400 hover:text-slate-600 text-base sm:text-lg leading-relaxed font-normal transition-colors';
+        continuousTextFlow.appendChild(currentParagraph);
+        sentenceCountInParagraph = 0;
+      }
+      lastSentenceTime = now;
+
+      // Append sentence continuously separated by a space and full stop!
+      const span = document.createElement('span');
+      span.textContent = (currentParagraph.textContent ? ' ' : '') + sentence;
+      currentParagraph.appendChild(span);
+      sentenceCountInParagraph++;
+
+      // If user hasn't manually scrolled up, auto-scroll to keep newest line right above the center
+      if (!isUserScrolledUp) {
+        historyScrollContainer.scrollTop = historyScrollContainer.scrollHeight;
+      }
     }
 
     function rollAiAnswerToHistory(answerText) {
       if (!answerText || !answerText.trim()) return;
+      currentParagraph = null; // Next speech will start a clean new paragraph
+
       const box = document.createElement('div');
-      box.className = 'text-xs sm:text-sm text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 my-1 space-y-1';
+      box.className = 'text-xs sm:text-sm text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200/60 my-2 space-y-1';
       box.innerHTML = `<span class="font-bold text-indigo-500 text-[10px] uppercase tracking-wider block">AI Key Points:</span> ${escapeHtml(answerText)}`;
-      historyFeed.appendChild(box);
-      historyScrollContainer.scrollTop = historyScrollContainer.scrollHeight;
+      continuousTextFlow.appendChild(box);
+
+      if (!isUserScrolledUp) {
+        historyScrollContainer.scrollTop = historyScrollContainer.scrollHeight;
+      }
     }
 
     // 3. AI TALKING POINTS RENDERING IN CENTER
