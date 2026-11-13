@@ -11,10 +11,10 @@
   <style>
     /* Custom visible clean scrollbar for upper prompt history */
     #historyScrollContainer::-webkit-scrollbar {
-      width: 6px;
+      width: 5px;
     }
     #historyScrollContainer::-webkit-scrollbar-track {
-      background: #f1f5f9;
+      background: #f8fafc;
       border-radius: 4px;
     }
     #historyScrollContainer::-webkit-scrollbar-thumb {
@@ -27,69 +27,76 @@
     html, body {
       height: 100%;
       overscroll-behavior: none;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
     }
-    /* Elegant top fade mask for older rolled-up prompts */
+    #historyScrollContainer {
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+    /* Subtle top edge fade for oldest rolled-up prompts */
     .mask-top-fade {
-      mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden select-none">
+<body class="bg-slate-100 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
 
-  <!-- TOP SPECTATOR HEADER -->
-  <header class="bg-white border-b border-slate-200 px-4 sm:px-8 py-2.5 flex items-center justify-between shrink-0 shadow-2xs z-20">
-    <div class="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
-      <div class="bg-gradient-to-br from-indigo-600 to-indigo-900 text-amber-300 p-1.5 sm:p-2 rounded-xl shadow-md flex items-center justify-center ring-2 ring-indigo-500/20">
-        <i data-lucide="zap" class="w-4 h-4 sm:w-5 sm:h-5 fill-amber-300 text-amber-300"></i>
+  <!-- TOP SPECTATOR HEADER: COMPACT & 100% MOBILE ADAPTIVE -->
+  <header class="bg-white border-b border-slate-200 px-3 sm:px-6 py-2 sm:py-2.5 flex items-center justify-between shrink-0 shadow-2xs z-20 gap-2">
+    <!-- Logo & Title -->
+    <div class="flex items-center space-x-2 sm:space-x-2.5 shrink-0">
+      <div class="bg-gradient-to-br from-indigo-600 to-indigo-900 text-amber-300 p-1.5 sm:p-2 rounded-xl shadow-md flex items-center justify-center ring-2 ring-indigo-500/20 shrink-0">
+        <i data-lucide="zap" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-300 text-amber-300"></i>
       </div>
       <div>
-        <h1 class="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight leading-tight flex items-center gap-1.5">
+        <h1 class="font-extrabold text-sm sm:text-base text-slate-900 tracking-tight leading-tight flex items-center gap-1.5">
           planck<span class="text-indigo-600">.ai</span>
-          <span class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Teleprompter</span>
+          <span class="hidden xs:inline-block text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Prompter</span>
         </h1>
       </div>
     </div>
 
     <!-- Spectator Status Controls -->
-    <div class="flex items-center gap-2 sm:gap-3">
+    <div class="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
       <!-- Live Room Badge -->
-      <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold shrink-0">
-        <span class="text-slate-400">Room:</span>
-        <span id="roomIdDisplay">...</span>
+      <div class="flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-700 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-mono font-semibold shrink-0">
+        <span class="hidden sm:inline text-slate-400">Room:</span>
+        <span id="roomIdDisplay" class="max-w-[70px] sm:max-w-none truncate">...</span>
       </div>
 
       <!-- Host Connection Indicator -->
-      <div id="hostStatusBadge" class="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0">
-        <span id="hostStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-        <span id="hostStatusText">Connecting...</span>
+      <div id="hostStatusBadge" class="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0">
+        <span id="hostStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+        <span id="hostStatusText" class="hidden xs:inline">Connecting</span>
       </div>
 
       <!-- Optional Audio Whisper for Spectator -->
-      <button id="specWhisperToggle" class="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition" title="Listen to AI answers in your earbuds">
-        <i data-lucide="headphones" class="w-3.5 h-3.5 text-indigo-600"></i>
+      <button id="specWhisperToggle" class="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition shrink-0" title="Listen to AI answers in your earbuds">
+        <i data-lucide="headphones" class="w-3.5 h-3.5 text-indigo-600 shrink-0"></i>
         <span id="specWhisperText" class="hidden sm:inline">Audio: OFF</span>
       </button>
     </div>
   </header>
 
-  <!-- PIN REQUIRED OVERLAY (If room is password protected) -->
-  <div id="pinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center hidden">
-    <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 p-6 space-y-4 mx-4">
+  <!-- PIN REQUIRED OVERLAY (Mobile Optimized) -->
+  <div id="pinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 p-5 sm:p-6 space-y-4 mx-auto">
       <div class="text-center space-y-1">
-        <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-2xs">
-          <i data-lucide="lock" class="w-6 h-6"></i>
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-2xs">
+          <i data-lucide="lock" class="w-5 h-5 sm:w-6 sm:h-6"></i>
         </div>
-        <h3 class="text-lg font-bold text-slate-900">Protected Session</h3>
+        <h3 class="text-base sm:text-lg font-bold text-slate-900">Protected Session</h3>
         <p class="text-xs text-slate-500">The host has protected this live session with a PIN.</p>
       </div>
 
       <div>
-        <input type="text" id="pinInput" placeholder="Enter PIN" class="w-full text-center text-lg font-mono tracking-widest bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" maxlength="6" />
+        <input type="text" id="pinInput" placeholder="Enter PIN" class="w-full text-center text-base sm:text-lg font-mono tracking-widest bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" maxlength="6" />
         <p id="pinError" class="text-xs text-rose-600 mt-1.5 text-center hidden font-medium">Incorrect PIN. Please try again.</p>
       </div>
 
-      <button id="submitPinBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition">
+      <button id="submitPinBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition text-sm sm:text-base">
         Join Live Session
       </button>
     </div>
@@ -97,37 +104,37 @@
 
   <!-- MAIN WORKSPACE: 3 VERTICAL PARTS (LEFT 1/3 BLANK, MIDDLE 1/3 TELEPROMPTER, RIGHT 1/3 BLANK) -->
   <main class="flex-1 min-h-0 w-full overflow-hidden flex flex-row bg-slate-100">
-    <!-- LEFT 1/3: BLANK SPACE -->
+    <!-- LEFT 1/3: BLANK SPACE (DESKTOP ONLY) -->
     <div class="hidden md:block md:w-1/3 bg-slate-100/70"></div>
 
-    <!-- MIDDLE 1/3: PURE TELEPROMPTER STAGE -->
+    <!-- MIDDLE 1/3: PURE TELEPROMPTER STAGE (FULL WIDTH ON MOBILE) -->
     <div class="w-full md:w-1/3 h-full flex flex-col justify-between relative overflow-hidden bg-white border-x border-slate-200/80 shadow-sm">
       
-      <!-- TOP 50%: PREVIOUS CONTINUOUS PROMPTS (SCROLLABLE, NATURALLY FLOWING SENTENCES SEPARATED BY FULL STOPS) -->
-      <div id="historyScrollContainer" class="flex-1 w-full overflow-y-auto px-6 sm:px-10 py-5 mask-top-fade overscroll-contain select-text">
+      <!-- TOP 50%: PREVIOUS CONTINUOUS PROMPTS (DARK TEXT-SLATE-800, SCROLLABLE NATURAL FLOW) -->
+      <div id="historyScrollContainer" class="flex-1 w-full overflow-y-auto px-4 sm:px-8 md:px-10 py-3 sm:py-5 mask-top-fade overscroll-contain select-text">
         <div id="historyFeed" class="min-h-full flex flex-col">
-          <div id="continuousTextFlow" class="mt-auto space-y-4 text-slate-400 text-base sm:text-lg leading-relaxed font-normal">
-            <!-- Continuous speech sentences roll up here separated by full stops -->
+          <div id="continuousTextFlow" class="mt-auto space-y-3 sm:space-y-4 text-slate-800 text-sm sm:text-base md:text-lg leading-relaxed font-medium">
+            <!-- Continuous speech sentences roll up here in dark, readable text separated by full stops -->
           </div>
         </div>
       </div>
 
       <!-- EXACT VERTICAL CENTER LINE: FRESH PROMPT (LOCKED AT EYE LEVEL) -->
-      <div id="centerPromptArea" class="w-full px-6 sm:px-10 py-5 bg-white z-10 shrink-0 border-t border-b border-indigo-100/70">
+      <div id="centerPromptArea" class="w-full px-4 sm:px-8 md:px-10 py-3.5 sm:py-5 bg-white z-10 shrink-0 border-t border-b border-indigo-100/80">
         <div class="flex items-start">
-          <p id="liveCenterPrompt" class="text-xl sm:text-2xl font-bold text-slate-900 leading-relaxed break-words flex-1">
-            <span id="centerPromptText" class="text-slate-400 font-normal italic text-base sm:text-lg">Waiting for speech... Words will appear here in the center</span>
-            <span id="centerPromptCursor" class="inline-block w-2.5 h-6 bg-indigo-600 ml-1.5 align-middle animate-pulse rounded-xs"></span>
+          <p id="liveCenterPrompt" class="text-lg sm:text-xl md:text-2xl font-black text-slate-950 leading-snug sm:leading-relaxed break-words flex-1">
+            <span id="centerPromptText" class="text-slate-400 font-normal italic text-sm sm:text-base">Waiting for speech... Words prompt here in the center</span>
+            <span id="centerPromptCursor" class="inline-block w-2 sm:w-2.5 h-4 sm:h-5 md:h-6 bg-indigo-600 ml-1 sm:ml-1.5 align-middle animate-pulse rounded-2xs"></span>
           </p>
         </div>
 
         <!-- Clean AI Talking Points (if question was answered) -->
-        <div id="centerAiWrapper" class="mt-3 pt-2.5 border-t border-slate-100 hidden">
-          <div class="flex items-center gap-1.5 text-xs font-bold text-indigo-600 mb-1.5">
+        <div id="centerAiWrapper" class="mt-2.5 sm:mt-3 pt-2 sm:pt-2.5 border-t border-slate-100 hidden">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-indigo-600 mb-1">
             <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
             <span>AI Talking Points:</span>
           </div>
-          <div id="centerAiContent" class="space-y-1.5 text-xs sm:text-sm text-slate-700 bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100/80"></div>
+          <div id="centerAiContent" class="space-y-1 text-xs sm:text-sm text-slate-700 bg-indigo-50/70 p-2 sm:p-2.5 rounded-xl border border-indigo-100/80"></div>
         </div>
       </div>
 
@@ -138,7 +145,7 @@
 
     </div>
 
-    <!-- RIGHT 1/3: BLANK SPACE -->
+    <!-- RIGHT 1/3: BLANK SPACE (DESKTOP ONLY) -->
     <div class="hidden md:block md:w-1/3 bg-slate-100/70"></div>
   </main>
 
@@ -183,12 +190,12 @@
     let lastSentenceTime = 0;
     let currentAiAnswerText = '';
 
-    // Scrollability & Manual Scroll Detection
+    // Scrollability & Manual Touch/Wheel Scroll Detection
     let isUserScrolledUp = false;
     historyScrollContainer.addEventListener('scroll', () => {
       const distanceToBottom = historyScrollContainer.scrollHeight - historyScrollContainer.scrollTop - historyScrollContainer.clientHeight;
-      isUserScrolledUp = distanceToBottom > 40;
-    });
+      isUserScrolledUp = distanceToBottom > 35;
+    }, { passive: true });
 
     function connectSpectator() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -199,8 +206,8 @@
       let specHeartbeat = null;
       specWs.onopen = () => {
         console.log('[Spectator] Connected to room:', roomId);
-        hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
-        hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+        hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+        hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0';
         hostStatusText.textContent = 'Live Active';
         if (specHeartbeat) clearInterval(specHeartbeat);
         specHeartbeat = setInterval(() => {
@@ -221,8 +228,8 @@
 
       specWs.onclose = () => {
         if (specHeartbeat) clearInterval(specHeartbeat);
-        hostStatusBadge.className = 'flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-500 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
-        hostStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        hostStatusBadge.className = 'flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-500 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+        hostStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400 shrink-0';
         hostStatusText.textContent = 'Disconnected';
         setTimeout(connectSpectator, 3000); // Auto-reconnect
       };
@@ -238,13 +245,13 @@
       if (data.type === 'session_init') {
         pinModal.classList.add('hidden');
         if (data.hostActive) {
-          hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
-          hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
-          hostStatusText.textContent = 'Host Active';
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0';
+          hostStatusText.textContent = 'Live Active';
         } else {
-          hostStatusBadge.className = 'flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
-          hostStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500';
-          hostStatusText.textContent = 'Host Standing By';
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500 shrink-0';
+          hostStatusText.textContent = 'Standing By';
         }
 
         // Render past history turns into continuous natural paragraphs
@@ -281,20 +288,20 @@
 
       if (data.type === 'host_status') {
         if (data.active) {
-          hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
-          hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
-          hostStatusText.textContent = 'Host Active';
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0';
+          hostStatusText.textContent = 'Live Active';
         } else {
-          hostStatusBadge.className = 'flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
-          hostStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500';
-          hostStatusText.textContent = 'Host Standing By';
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500 shrink-0';
+          hostStatusText.textContent = 'Standing By';
         }
       }
     }
 
     // 1. LIVE CENTER PROMPTER ENGINE:
     // Prompt is locked in the EXACT CENTER. Once it completes a certain length (~12-14 words or punctuation),
-    // it rolls UP to history, joining the continuous paragraph separated by full stops. Down is never used!
+    // it rolls UP to history in DARK readable text separated by full stops. Down is never used!
     function handleCenterTranscript(text, isFinal) {
       if (!text || !text.trim()) return;
 
@@ -308,7 +315,7 @@
 
       if (isInitialWaiting) {
         isInitialWaiting = false;
-        centerPromptText.className = 'text-slate-900 font-bold';
+        centerPromptText.className = 'text-slate-950 font-black';
       }
 
       if (isFinal) {
@@ -343,7 +350,7 @@
     }
 
     // 2. ROLL UP INTO CONTINUOUS PARAGRAPHS SEPARATED BY FULL STOPS:
-    // No bullet fragmentation! Sentences join naturally in a continuous flowing paragraph.
+    // Rendered in DARK HIGH-CONTRAST TEXT-SLATE-800 font (crisp on mobile and desktop).
     function rollPromptUpToHistory(completedText) {
       if (!completedText || !completedText.trim()) return;
 
@@ -361,7 +368,7 @@
       // Start a new paragraph after a long pause (> 5.5s) or after 4 sentences
       if (!currentParagraph || isLongPause || sentenceCountInParagraph >= 4) {
         currentParagraph = document.createElement('p');
-        currentParagraph.className = 'text-slate-400 hover:text-slate-600 text-base sm:text-lg leading-relaxed font-normal transition-colors';
+        currentParagraph.className = 'text-slate-800 text-sm sm:text-base md:text-lg leading-relaxed font-medium transition-colors';
         continuousTextFlow.appendChild(currentParagraph);
         sentenceCountInParagraph = 0;
       }
@@ -384,8 +391,8 @@
       currentParagraph = null; // Next speech will start a clean new paragraph
 
       const box = document.createElement('div');
-      box.className = 'text-xs sm:text-sm text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200/60 my-2 space-y-1';
-      box.innerHTML = `<span class="font-bold text-indigo-500 text-[10px] uppercase tracking-wider block">AI Key Points:</span> ${escapeHtml(answerText)}`;
+      box.className = 'text-xs sm:text-sm text-slate-700 bg-slate-50 p-2.5 sm:p-3 rounded-xl border border-slate-200/80 my-2 space-y-1';
+      box.innerHTML = `<span class="font-bold text-indigo-600 text-[10px] uppercase tracking-wider block">AI Key Points:</span> ${escapeHtml(answerText)}`;
       continuousTextFlow.appendChild(box);
 
       if (!isUserScrolledUp) {
@@ -404,7 +411,7 @@
           html += `
             <div class="flex items-start gap-1.5 leading-snug">
               <span class="text-indigo-600 font-bold shrink-0">⚡</span>
-              <span class="text-xs sm:text-sm text-slate-800 font-medium">${escapeHtml(clean)}</span>
+              <span class="text-xs sm:text-sm text-slate-800 font-semibold">${escapeHtml(clean)}</span>
             </div>
           `;
         }
@@ -440,15 +447,15 @@
     specWhisperToggle.addEventListener('click', () => {
       specWhisperEnabled = !specWhisperEnabled;
       if (specWhisperEnabled) {
-        specWhisperToggle.className = 'border border-emerald-500 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
-        specWhisperText.textContent = 'Audio: ON';
+        specWhisperToggle.className = 'border border-emerald-500 bg-emerald-50 text-emerald-700 p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
+        if (specWhisperText) specWhisperText.textContent = 'Audio: ON';
         if ('speechSynthesis' in window) {
           const silent = new SpeechSynthesisUtterance(' ');
           window.speechSynthesis.speak(silent);
         }
       } else {
-        specWhisperToggle.className = 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
-        specWhisperText.textContent = 'Audio: OFF';
+        specWhisperToggle.className = 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
+        if (specWhisperText) specWhisperText.textContent = 'Audio: OFF';
         if ('speechSynthesis' in window) {
           window.speechSynthesis.cancel();
         }
