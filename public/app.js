@@ -714,7 +714,7 @@ async function startRecording() {
         }
       } catch (err) {
         if (err.message === 'NO_TAB_AUDIO') {
-          alert("Tab audio was not shared! When selecting your Google Voice or Meeting tab, make sure the checkbox 'Also share tab audio' (at bottom-left) is checked.");
+          alert("Tab audio was not shared! When selecting a meeting or browser tab, make sure the checkbox 'Also share tab audio' (at bottom-left) is checked.");
         } else if (err.name !== 'NotAllowedError') {
           console.warn('[Audio] Tab capture cancelled or error:', err);
         }
@@ -813,8 +813,8 @@ function setupAudioProcessing() {
 
   // Update UI to recording state
   isRecording = true;
-  toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
-  toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Listening</span><span class="sm:hidden">Stop</span>';
+  toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+  toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Speaking</span><span class="sm:hidden">Stop</span>';
   recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping';
   lucide.createIcons();
 
@@ -845,8 +845,8 @@ function stopRecording() {
   }
 
   // Reset UI
-  toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
-  toggleAudioBtn.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Listening</span><span class="sm:hidden">Listen</span>';
+  toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+  toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Speaking</span><span class="sm:hidden">Speak</span>';
   recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
   audioMeterText.textContent = '0 dB';
   interimBar.classList.add('hidden');
@@ -950,11 +950,11 @@ let lastBubbleTime = 0;
 function renderLiveTranscript(text, isFinal, speakerId) {
   emptyPlaceholder.classList.add('hidden');
 
-  let speakerLabel = 'Speaker';
+  let speakerLabel = 'You (Speaker)';
   let badgeColor = 'bg-indigo-500';
 
   if (currentSource === 'tab') {
-    speakerLabel = 'Interviewer (Call Audio)';
+    speakerLabel = 'Meeting / Call Audio';
     badgeColor = 'bg-indigo-600';
   } else if (speakerId !== null && speakerId !== undefined) {
     speakerLabel = `Speaker ${speakerId + 1}`;

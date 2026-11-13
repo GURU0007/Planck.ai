@@ -255,7 +255,7 @@
 
       if (data.type === 'transcript') {
         specEmptyPlaceholder.classList.add('hidden');
-        renderSpectatorTranscript(data.text, data.isFinal, data.speaker !== null ? `Speaker ${data.speaker + 1}` : 'Interviewer');
+        renderSpectatorTranscript(data.text, data.isFinal, data.speaker !== null ? `Speaker ${data.speaker + 1}` : 'Speaker');
       }
 
       if (data.type === 'answer_start') {
