@@ -10,18 +10,19 @@ function createStealthWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width, height } = primaryDisplay.workAreaSize;
 
-  const winWidth = Math.min(520, Math.floor(width * 0.35));
-  const winHeight = Math.min(550, Math.floor(height * 0.6));
+  const winWidth = Math.min(580, Math.floor(width * 0.42));
+  const winHeight = Math.min(640, Math.floor(height * 0.72));
 
   mainWindow = new BrowserWindow({
     width: winWidth,
     height: winHeight,
     x: Math.floor((width - winWidth) / 2),
-    y: 60,
+    y: 40,
     alwaysOnTop: true,
     transparent: false,
     frame: true,
-    title: 'Planck.ai Stealth Prompter',
+    title: 'Planck.ai Stealth Copilot',
+    skipTaskbar: true, // Invisible on taskbar
     hasShadow: true,
     resizable: true,
     minimizable: true,
@@ -86,6 +87,12 @@ function createStealthWindow() {
       mainWindow.show();
       console.log('[Stealth] Overlay restored');
     }
+  });
+
+  // Global Quick Quit: Ctrl+Shift+Q to exit completely
+  globalShortcut.register('CommandOrControl+Shift+Q', () => {
+    console.log('[Stealth] Quitting overlay...');
+    app.quit();
   });
 
   mainWindow.on('closed', () => {

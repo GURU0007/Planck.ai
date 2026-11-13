@@ -135,7 +135,7 @@ function setSource(source) {
     }
 
     if (placeholderText) {
-      placeholderText.innerHTML = 'Select your <strong>Google Voice or Call tab</strong> and click <strong>"Start Listening"</strong>. Questions will stream and generate instant AI talking points.';
+      placeholderText.innerHTML = '<strong>Interviewer-Only Mode:</strong> Select your <strong>Google Meet, Zoom, or Call tab</strong> and click <strong>"Start Listening"</strong>. The AI listens <strong>ONLY to the interviewer</strong> (your own voice is excluded). Instant talking points will stream automatically.';
     }
     if (placeholderIcon) {
       placeholderIcon.setAttribute('data-lucide', 'headphones');
