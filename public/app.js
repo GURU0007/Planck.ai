@@ -1117,9 +1117,18 @@ function renderLiveTranscript(text, isFinal, speakerId) {
   const bubbleActions = activeBubble.querySelector('.bubble-actions');
 
   if (!isFinal) {
-    // Live in-progress speech (instant word prompt with pulsing cursor)
+    // Live in-progress speech with 60 FPS kinetic word transitions
     if (bubbleP) {
-      bubbleP.innerHTML = `${escapeHtml(fullText)}<span class="inline-block w-1.5 h-3 bg-indigo-500 ml-1 animate-pulse"></span>`;
+      const words = fullText.trim().split(/\s+/).filter(Boolean);
+      const existingSpans = bubbleP.querySelectorAll('.bubble-word');
+      
+      let html = '';
+      for (let i = 0; i < words.length; i++) {
+        const isBrandNew = i >= existingSpans.length;
+        html += `<span class="bubble-word ${isBrandNew ? 'k-word' : ''}">${escapeHtml(words[i])} </span>`;
+      }
+      html += `<span class="inline-block w-1.5 h-3 bg-indigo-500 ml-1 animate-pulse rounded-2xs align-middle"></span>`;
+      bubbleP.innerHTML = html;
     }
   } else {
     // Solid text containing this finalized question

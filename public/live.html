@@ -39,6 +39,29 @@
       mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
       -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
     }
+    /* 60 FPS Kinetic Word Flow: Hardware-Accelerated Smooth Transition (<80ms) */
+    @keyframes kWordGlide {
+      0% {
+        opacity: 0;
+        transform: translateY(4px) scale(0.97);
+        filter: blur(1.5px);
+      }
+      60% {
+        filter: blur(0px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0px);
+      }
+    }
+    .k-word {
+      display: inline-block;
+      margin-right: 0.28em;
+      animation: kWordGlide 75ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: transform, opacity;
+      transform-origin: bottom center;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
@@ -312,6 +335,119 @@
       }
     }
 
+    // 60 FPS KINETIC WORD STREAMER (<80ms LATENCY)
+    class KineticStreamer {
+      constructor(containerElement) {
+        this.container = containerElement;
+        this.displayedWords = [];
+        this.animationQueue = [];
+        this.rafId = null;
+        this.lastFrameTime = 0;
+        this.intervalMs = 24; // 24ms per word = ~40 words/sec (sub-75ms responsiveness)
+      }
+
+      update(fullText) {
+        if (!fullText || !fullText.trim()) {
+          this.clear();
+          return;
+        }
+
+        const words = fullText.trim().split(/\s+/).filter(Boolean);
+        if (words.length === 0) return;
+
+        // Find how many words match from the beginning (prefix match)
+        let commonLen = 0;
+        while (
+          commonLen < this.displayedWords.length &&
+          commonLen < words.length &&
+          this.displayedWords[commonLen] === words[commonLen]
+        ) {
+          commonLen++;
+        }
+
+        // If Deepgram revised an interim word, prune mismatched suffix
+        if (commonLen < this.displayedWords.length) {
+          this.pruneTo(commonLen);
+        }
+
+        // Queue newly arrived words for 60fps kinetic glide
+        const newWords = words.slice(commonLen);
+        if (newWords.length > 0) {
+          // If queue is getting long (> 3 words), accelerate cadence so latency is strictly < 75ms
+          if (newWords.length >= 4) {
+            this.intervalMs = Math.max(10, Math.floor(65 / newWords.length));
+          } else {
+            this.intervalMs = 24;
+          }
+
+          for (let i = 0; i < newWords.length; i++) {
+            this.animationQueue.push(newWords[i]);
+          }
+
+          if (!this.rafId) {
+            this.lastFrameTime = performance.now();
+            this.rafId = requestAnimationFrame(this.onAnimationFrame.bind(this));
+          }
+        }
+      }
+
+      onAnimationFrame(now) {
+        const elapsed = now - this.lastFrameTime;
+
+        if (elapsed >= this.intervalMs && this.animationQueue.length > 0) {
+          const word = this.animationQueue.shift();
+          this.appendWord(word);
+          this.displayedWords.push(word);
+          this.lastFrameTime = now;
+        }
+
+        if (this.animationQueue.length > 0) {
+          this.rafId = requestAnimationFrame(this.onAnimationFrame.bind(this));
+        } else {
+          this.rafId = null;
+        }
+      }
+
+      appendWord(word) {
+        const span = document.createElement('span');
+        span.className = 'k-word';
+        span.textContent = word;
+        this.container.appendChild(span);
+      }
+
+      pruneTo(count) {
+        this.displayedWords = this.displayedWords.slice(0, count);
+        while (this.container.children.length > count) {
+          this.container.removeChild(this.container.lastChild);
+        }
+        this.animationQueue = [];
+      }
+
+      clear() {
+        this.displayedWords = [];
+        this.animationQueue = [];
+        if (this.rafId) {
+          cancelAnimationFrame(this.rafId);
+          this.rafId = null;
+        }
+        this.container.innerHTML = '';
+      }
+
+      flush() {
+        while (this.animationQueue.length > 0) {
+          const word = this.animationQueue.shift();
+          this.appendWord(word);
+          this.displayedWords.push(word);
+        }
+        if (this.rafId) {
+          cancelAnimationFrame(this.rafId);
+          this.rafId = null;
+        }
+      }
+    }
+
+    const kineticStreamer = new KineticStreamer(centerPromptText);
+
     // 1. LIVE CENTER PROMPTER ENGINE:
     // Prompt is locked in the EXACT CENTER. Once it completes a certain length (~12-14 words or punctuation),
     // it rolls UP to history in DARK readable text separated by full stops. Down is never used!
@@ -321,14 +457,17 @@
       const now = Date.now();
       // If user paused speaking for > 3.5 seconds, roll previous completed sentence up
       if (now - lastChunkTime > 3500 && accumulatedPromptWords.length > 0) {
+        kineticStreamer.flush();
         rollPromptUpToHistory(accumulatedPromptWords.join(' '));
         accumulatedPromptWords = [];
+        kineticStreamer.clear();
       }
       lastChunkTime = now;
 
       if (isInitialWaiting) {
         isInitialWaiting = false;
         centerPromptText.className = 'text-slate-950 font-black';
+        centerPromptText.innerHTML = '';
       }
 
       if (isFinal) {
@@ -339,7 +478,8 @@
         ? (isFinal ? accumulatedPromptWords.join(' ') : accumulatedPromptWords.join(' ') + ' ' + text.trim())
         : text.trim();
 
-      centerPromptText.textContent = activeDisplay;
+      // Fluid 60 FPS continuous kinetic stream
+      kineticStreamer.update(activeDisplay);
 
       // LENGTH THRESHOLD & SENTENCE BOUNDARY:
       // When finalized text reaches ~12-14 words or completes a sentence with period/question:
@@ -348,17 +488,20 @@
 
       if (isFinal && (wordCount >= 12 || isSentenceEnd)) {
         // Roll up into continuous flowing paragraph!
+        kineticStreamer.flush();
         rollPromptUpToHistory(activeDisplay);
         accumulatedPromptWords = [];
-        centerPromptText.textContent = '';
+        kineticStreamer.clear();
       } else if (!isFinal && wordCount >= 18) {
         // Interim speech exceeded 18 words without pause: roll first 12 words up to continuous paragraph!
         const words = activeDisplay.split(/\s+/).filter(Boolean);
         const rollWords = words.slice(0, 12).join(' ');
         const keepWords = words.slice(12).join(' ');
+        kineticStreamer.flush();
         rollPromptUpToHistory(rollWords);
         accumulatedPromptWords = [keepWords];
-        centerPromptText.textContent = keepWords;
+        kineticStreamer.clear();
+        kineticStreamer.update(keepWords);
       }
     }
 

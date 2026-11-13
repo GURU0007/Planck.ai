@@ -271,7 +271,7 @@ wss.on('connection', (ws, req) => {
         smart_format: true,
         punctuate: true,
         interim_results: true,
-        endpointing: 250, // 250ms ultra-low pause detection for instant turn finalization
+        endpointing: 200, // 200ms ultra-low pause detection for instant turn finalization
         encoding: 'linear16',
         sample_rate: clientSampleRate,
         channels: 1,
