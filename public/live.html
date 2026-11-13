@@ -3,34 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>planck.ai — Live Spectator</title>
+  <title>planck.ai — Live Teleprompter</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    /* Custom clean scrollbar */
+    /* Custom clean scrollbar for history */
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     ::-webkit-scrollbar-track {
       background: transparent;
     }
     ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
+      background: #e2e8f0;
       border-radius: 3px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
+      background: #cbd5e1;
     }
     html, body {
       height: 100%;
       overscroll-behavior: none;
     }
-    .teleprompter-feed {
-      padding-top: 42vh !important;
-      padding-bottom: 50vh !important;
+    /* Elegant top fade mask for previous rolled-up prompts */
+    .mask-top-fade {
+      mask-image: linear-gradient(to bottom, transparent 0%, black 20%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%);
     }
   </style>
 </head>
@@ -45,7 +46,7 @@
       <div>
         <h1 class="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight leading-tight flex items-center gap-1.5">
           planck<span class="text-indigo-600">.ai</span>
-          <span class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Spectator</span>
+          <span class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Teleprompter</span>
         </h1>
       </div>
     </div>
@@ -94,25 +95,45 @@
     </div>
   </div>
 
-  <!-- MAIN WORKSPACE: SINGLE WINDOW WITH 3 VERTICAL PARTS (BLANK LEFT 1/3, MIDDLE 1/3 CONTENT, BLANK RIGHT 1/3) -->
+  <!-- MAIN WORKSPACE: 3 VERTICAL PARTS (LEFT 1/3 BLANK, MIDDLE 1/3 TELEPROMPTER, RIGHT 1/3 BLANK) -->
   <main class="flex-1 min-h-0 w-full overflow-hidden flex flex-row bg-slate-100">
     <!-- LEFT 1/3: BLANK SPACE -->
     <div class="hidden md:block md:w-1/3 bg-slate-100/70"></div>
 
-    <!-- MIDDLE 1/3: SINGLE OTTER WINDOW WITH AUTO-SCROLL -->
-    <div id="specScrollContainer" class="w-full md:w-1/3 bg-white border-x border-slate-200/80 flex flex-col h-full overflow-y-auto shadow-sm">
-      <div id="specFeed" class="p-4 sm:p-6 space-y-3.5 min-h-full flex flex-col justify-start">
-        <!-- Initial Empty State -->
-        <div id="specEmptyPlaceholder" class="my-auto py-16 flex flex-col items-center justify-center text-slate-400 space-y-2">
-          <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs">
-            <i data-lucide="radio" class="w-6 h-6"></i>
-          </div>
-          <p class="font-bold text-slate-700 text-sm">Live Otter Feed</p>
-          <p class="text-xs text-center max-w-xs text-slate-400">
-            Waiting for speech. Transcribed speech and live AI talking points will appear and auto-scroll here in real-time.
-          </p>
+    <!-- MIDDLE 1/3: PURE TELEPROMPTER STAGE -->
+    <div class="w-full md:w-1/3 h-full flex flex-col justify-between relative overflow-hidden bg-white border-x border-slate-200/80 shadow-sm">
+      
+      <!-- TOP 50%: PREVIOUS PROMPTS (SCROLLS UPWARD TOWARD TOP, SOFT MUTED/FADED) -->
+      <div id="historyScrollContainer" class="flex-1 w-full overflow-y-auto px-6 sm:px-8 py-4 flex flex-col justify-end mask-top-fade">
+        <div id="historyFeed" class="space-y-3.5 text-slate-400 text-sm sm:text-base leading-relaxed font-normal">
+          <!-- Finalized speech rolls up here into history -->
         </div>
       </div>
+
+      <!-- EXACT VERTICAL CENTER LINE: FRESH PROMPT (LOCKED AT EYE LEVEL) -->
+      <div id="centerPromptArea" class="w-full px-6 sm:px-8 py-5 bg-white z-10 shrink-0 border-t border-b border-indigo-100/70">
+        <div class="flex items-start">
+          <p id="liveCenterPrompt" class="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 leading-relaxed break-words flex-1">
+            <span id="centerPromptText" class="text-slate-400 font-normal italic text-sm sm:text-base">Waiting for speech... Words will appear here in the center</span>
+            <span id="centerPromptCursor" class="inline-block w-2 h-5 sm:h-6 bg-indigo-600 ml-1.5 align-middle animate-pulse rounded-xs"></span>
+          </p>
+        </div>
+
+        <!-- Clean AI Talking Points (if question was answered) -->
+        <div id="centerAiWrapper" class="mt-3 pt-2.5 border-t border-slate-100 hidden">
+          <div class="flex items-center gap-1.5 text-xs font-bold text-indigo-600 mb-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+            <span>AI Talking Points:</span>
+          </div>
+          <div id="centerAiContent" class="space-y-1.5 text-xs sm:text-sm text-slate-700 bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100/80"></div>
+        </div>
+      </div>
+
+      <!-- BOTTOM 50%: DOWN NOT NEEDED (CLEAN EMPTY WHITE SPACE) -->
+      <div class="flex-1 w-full bg-white pointer-events-none">
+        <!-- Down is not needed: kept 100% clean so eyes never look down! -->
+      </div>
+
     </div>
 
     <!-- RIGHT 1/3: BLANK SPACE -->
@@ -133,9 +154,6 @@
     const hostStatusBadge = document.getElementById('hostStatusBadge');
     const hostStatusDot = document.getElementById('hostStatusDot');
     const hostStatusText = document.getElementById('hostStatusText');
-    const specScrollContainer = document.getElementById('specScrollContainer');
-    const specFeed = document.getElementById('specFeed');
-    const specEmptyPlaceholder = document.getElementById('specEmptyPlaceholder');
     const specWhisperToggle = document.getElementById('specWhisperToggle');
     const specWhisperText = document.getElementById('specWhisperText');
 
@@ -144,48 +162,21 @@
     const pinError = document.getElementById('pinError');
     const submitPinBtn = document.getElementById('submitPinBtn');
 
+    // Teleprompter DOM Elements
+    const historyScrollContainer = document.getElementById('historyScrollContainer');
+    const historyFeed = document.getElementById('historyFeed');
+    const centerPromptText = document.getElementById('centerPromptText');
+    const centerPromptCursor = document.getElementById('centerPromptCursor');
+    const centerAiWrapper = document.getElementById('centerAiWrapper');
+    const centerAiContent = document.getElementById('centerAiContent');
+
     roomIdDisplay.textContent = roomId;
 
-    // Center-scrolling teleprompter engine: keeps active reading line pinned at vertical center
-    function scrollActiveToCenter() {
-      if (!specScrollContainer || !specFeed) return;
-
-      if (!specFeed.classList.contains('teleprompter-feed')) {
-        specFeed.classList.add('teleprompter-feed');
-      }
-
-      const targetEl = activeAiBlock || activeSpecBubble;
-      if (!targetEl) {
-        const lastChild = specFeed.lastElementChild;
-        if (lastChild && lastChild !== specEmptyPlaceholder) {
-          const containerRect = specScrollContainer.getBoundingClientRect();
-          const targetRect = lastChild.getBoundingClientRect();
-          const targetCenterY = containerRect.top + (containerRect.height * 0.46);
-          const currentPointY = targetRect.bottom;
-          specScrollContainer.scrollTop += (currentPointY - targetCenterY);
-        }
-        return;
-      }
-
-      // Locate active typing point (cursor or bottom of text block)
-      const cursor = targetEl.querySelector('.animate-pulse') || targetEl.querySelector('.spec-bubble-text') || targetEl;
-      const containerRect = specScrollContainer.getBoundingClientRect();
-      const pointRect = cursor.getBoundingClientRect();
-
-      // Desired vertical center line: 46% of container height (natural eye level)
-      const targetCenterY = containerRect.top + (containerRect.height * 0.46);
-      const currentPointY = pointRect.bottom;
-      const deltaY = currentPointY - targetCenterY;
-
-      if (Math.abs(deltaY) > 1) {
-        specScrollContainer.scrollTop += deltaY;
-      }
-    }
-
-    // Keep scrollToBottom as alias to guarantee backwards-compatibility
-    function scrollToBottom() {
-      scrollActiveToCenter();
-    }
+    // Active Turn State
+    let isInitialWaiting = true;
+    let accumulatedPromptWords = [];
+    let lastChunkTime = 0;
+    let currentAiAnswerText = '';
 
     function connectSpectator() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -225,13 +216,6 @@
       };
     }
 
-    // Active block tracking in the single window feed
-    let activeSpecBubble = null;
-    let specTurnAccumulator = [];
-    let lastSpecBubbleTime = 0;
-    let activeAiBlock = null;
-    let currentAiAnswerText = '';
-
     function handleSpectatorMessage(data) {
       if (data.type === 'pin_required') {
         pinModal.classList.remove('hidden');
@@ -251,52 +235,36 @@
           hostStatusText.textContent = 'Host Standing By';
         }
 
-        // Render past history turns if joining mid-session
+        // Render past history turns into top history container
         if (data.history && data.history.length > 0) {
-          if (specEmptyPlaceholder) specEmptyPlaceholder.classList.add('hidden');
           data.history.forEach(turn => {
-            renderSpectatorTranscript(turn.question, true, 'Speaker');
-            if (turn.answer) {
-              renderInlineAiAnswer(turn.answer, false);
-            }
+            if (turn.question) rollPromptUpToHistory(turn.question);
+            if (turn.answer) rollAiAnswerToHistory(turn.answer);
           });
-          scrollToBottom();
-        } else if (data.currentQuestion) {
-          if (specEmptyPlaceholder) specEmptyPlaceholder.classList.add('hidden');
-          renderSpectatorTranscript(data.currentQuestion, true, 'Speaker');
-          if (data.currentAnswer) {
-            renderInlineAiAnswer(data.currentAnswer, false);
-          }
-          scrollToBottom();
         }
       }
 
+      // LIVE SPEECH TRANSCRIPT: PROMPT AT EXACT CENTER LINE
       if (data.type === 'transcript') {
-        if (specEmptyPlaceholder) specEmptyPlaceholder.classList.add('hidden');
-        const speakerLabel = data.speaker !== null && data.speaker !== undefined ? `Speaker ${data.speaker + 1}` : 'Speaker';
-        renderSpectatorTranscript(data.text, data.isFinal, speakerLabel);
-        scrollToBottom();
+        handleCenterTranscript(data.text, data.isFinal);
       }
 
+      // AI TALKING POINTS
       if (data.type === 'answer_start') {
-        if (specEmptyPlaceholder) specEmptyPlaceholder.classList.add('hidden');
         currentAiAnswerText = '';
-        createInlineAiBlock(data.question);
-        scrollToBottom();
+        centerAiWrapper.classList.remove('hidden');
+        centerAiContent.innerHTML = '<p class="text-xs text-indigo-500 italic flex items-center gap-1.5"><span class="w-2.5 h-2.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span><span>Generating talking points...</span></p>';
       }
 
       if (data.type === 'answer_token') {
         currentAiAnswerText += data.token;
-        updateInlineAiBlock(currentAiAnswerText);
-        scrollToBottom();
+        updateCenterAiContent(currentAiAnswerText);
       }
 
       if (data.type === 'answer_done') {
-        finalizeInlineAiBlock();
         if (specWhisperEnabled && currentAiAnswerText) {
           speakSpectatorWhisper(currentAiAnswerText);
         }
-        scrollToBottom();
       }
 
       if (data.type === 'host_status') {
@@ -312,122 +280,94 @@
       }
     }
 
-    // 1. Render Live Speech Paragraphs in the Single Window
-    function renderSpectatorTranscript(text, isFinal, speakerLabel) {
+    // 1. LIVE CENTER PROMPTER ENGINE:
+    // Prompt is locked in the EXACT CENTER. Once it completes a certain length (~12-14 words or punctuation),
+    // it rolls UP to history, and fresh prompt begins in the center. Down is never used!
+    function handleCenterTranscript(text, isFinal) {
+      if (!text || !text.trim()) return;
+
       const now = Date.now();
-      if (now - lastSpecBubbleTime > 3000 && activeSpecBubble) {
-        activeSpecBubble = null;
-        specTurnAccumulator = [];
+      // If user paused speaking for > 3.5 seconds, roll previous completed sentence up
+      if (now - lastChunkTime > 3500 && accumulatedPromptWords.length > 0) {
+        rollPromptUpToHistory(accumulatedPromptWords.join(' '));
+        accumulatedPromptWords = [];
       }
-      lastSpecBubbleTime = now;
+      lastChunkTime = now;
 
-      if (!activeSpecBubble) {
-        activeSpecBubble = document.createElement('div');
-        activeSpecBubble.className = 'p-3.5 bg-white border-2 border-indigo-500/70 shadow-sm rounded-xl space-y-1.5 transition-all';
-        const initial = speakerLabel.charAt(0).toUpperCase();
-        activeSpecBubble.innerHTML = `
-          <div class="flex items-center justify-between text-xs text-slate-500">
-            <span class="font-bold text-slate-800 flex items-center gap-1.5">
-              <span class="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-extrabold flex items-center justify-center">${initial}</span>
-              <span class="spec-dot w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-              <span>${escapeHtml(speakerLabel)}</span>
-            </span>
-            <span class="font-mono text-[10px] text-slate-400">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-          </div>
-          <p class="text-xs sm:text-sm text-slate-800 leading-relaxed font-semibold spec-bubble-text"></p>
-        `;
-        specFeed.appendChild(activeSpecBubble);
-        specTurnAccumulator = [];
-      }
-
-      if (isFinal && text.trim()) {
-        specTurnAccumulator.push(text.trim());
-      }
-
-      const fullText = specTurnAccumulator.length > 0
-        ? (isFinal ? specTurnAccumulator.join(' ') : specTurnAccumulator.join(' ') + ' ' + text)
-        : text;
-
-      const p = activeSpecBubble.querySelector('.spec-bubble-text');
-      if (p) {
-        if (!isFinal) {
-          p.innerHTML = `${escapeHtml(fullText)}<span class="inline-block w-1.5 h-3 bg-indigo-500 ml-1 animate-pulse"></span>`;
-        } else {
-          p.textContent = fullText;
-        }
+      if (isInitialWaiting) {
+        isInitialWaiting = false;
+        centerPromptText.className = 'text-slate-900 font-bold';
       }
 
       if (isFinal) {
-        const dot = activeSpecBubble.querySelector('.spec-dot');
-        if (dot) dot.classList.remove('animate-ping');
-        const trimmed = text.trim();
-        const wordCount = fullText.trim().split(/\s+/).filter(Boolean).length;
-        if (trimmed.endsWith('?') || wordCount >= 30) {
-          activeSpecBubble.className = 'p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5 transition opacity-80';
-          activeSpecBubble = null;
-          specTurnAccumulator = [];
-        }
+        accumulatedPromptWords.push(text.trim());
+      }
+
+      const activeDisplay = accumulatedPromptWords.length > 0
+        ? (isFinal ? accumulatedPromptWords.join(' ') : accumulatedPromptWords.join(' ') + ' ' + text.trim())
+        : text.trim();
+
+      centerPromptText.textContent = activeDisplay;
+
+      // LENGTH THRESHOLD & SENTENCE BOUNDARY:
+      // When finalized text reaches ~12-14 words or completes a sentence with period/question:
+      const wordCount = activeDisplay.split(/\s+/).filter(Boolean).length;
+      const isSentenceEnd = activeDisplay.endsWith('.') || activeDisplay.endsWith('?') || activeDisplay.endsWith('!');
+
+      if (isFinal && (wordCount >= 12 || isSentenceEnd)) {
+        // Roll up to top history!
+        rollPromptUpToHistory(activeDisplay);
+        accumulatedPromptWords = [];
+        centerPromptText.textContent = '';
+      } else if (!isFinal && wordCount >= 18) {
+        // Interim speech exceeded 18 words without pause: roll first 12 words up to top!
+        const words = activeDisplay.split(/\s+/).filter(Boolean);
+        const rollWords = words.slice(0, 12).join(' ');
+        const keepWords = words.slice(12).join(' ');
+        rollPromptUpToHistory(rollWords);
+        accumulatedPromptWords = [keepWords];
+        centerPromptText.textContent = keepWords;
       }
     }
 
-    // 2. Render Inline AI Talking Points inside the Single Window
-    function createInlineAiBlock(question) {
-      activeAiBlock = document.createElement('div');
-      activeAiBlock.className = 'my-2.5 p-3.5 bg-gradient-to-br from-indigo-50/70 to-purple-50/40 border border-indigo-200/80 rounded-xl space-y-2 shadow-2xs';
-      activeAiBlock.innerHTML = `
-        <div class="flex items-center justify-between border-b border-indigo-100/80 pb-2">
-          <div class="flex items-center gap-1.5">
-            <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
-            <span class="text-xs font-bold text-indigo-900 flex items-center gap-1">
-              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-600"></i>
-              <span>AI Talking Points</span>
-            </span>
-          </div>
-          <span class="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-semibold">Groq LPU (~120ms)</span>
-        </div>
-        <div class="spec-ai-content text-xs sm:text-sm text-slate-800 space-y-1.5 leading-snug">
-          <p class="text-xs text-indigo-500 italic flex items-center gap-1.5">
-            <span class="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
-            <span>Generating points...</span>
-          </p>
-        </div>
-      `;
-      specFeed.appendChild(activeAiBlock);
-      lucide.createIcons();
+    // 2. ROLL UP TO TOP HISTORY (Muted slate-400 font, rolling upward):
+    function rollPromptUpToHistory(completedText) {
+      if (!completedText || !completedText.trim()) return;
+      const p = document.createElement('p');
+      p.className = 'text-slate-400 hover:text-slate-600 text-sm sm:text-base leading-relaxed transition-colors';
+      p.textContent = completedText.trim();
+      historyFeed.appendChild(p);
+
+      // Scroll top container to bottom so newest rolled-up line sits right above the center
+      historyScrollContainer.scrollTop = historyScrollContainer.scrollHeight;
     }
 
-    function updateInlineAiBlock(rawText) {
-      if (!activeAiBlock) return;
-      const contentDiv = activeAiBlock.querySelector('.spec-ai-content');
-      if (!contentDiv) return;
+    function rollAiAnswerToHistory(answerText) {
+      if (!answerText || !answerText.trim()) return;
+      const box = document.createElement('div');
+      box.className = 'text-xs sm:text-sm text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60 my-1 space-y-1';
+      box.innerHTML = `<span class="font-bold text-indigo-500 text-[10px] uppercase tracking-wider block">AI Key Points:</span> ${escapeHtml(answerText)}`;
+      historyFeed.appendChild(box);
+      historyScrollContainer.scrollTop = historyScrollContainer.scrollHeight;
+    }
 
+    // 3. AI TALKING POINTS RENDERING IN CENTER
+    function updateCenterAiContent(rawText) {
+      if (!centerAiContent) return;
       const cleanLines = rawText.split('\n').filter(l => l.trim().length > 0);
       let html = '';
       cleanLines.forEach(line => {
         let clean = line.replace(/^\s*[-*•]\s*/, '').replace(/^\s*\d+\.\s*/, '').trim();
         if (clean) {
           html += `
-            <div class="flex items-start gap-2 bg-white/90 p-2 rounded-lg border border-indigo-100/70 shadow-2xs">
-              <span class="text-indigo-600 font-bold shrink-0 mt-0.5">⚡</span>
-              <span class="text-xs sm:text-[13px] text-slate-800 leading-snug font-medium">${escapeHtml(clean)}</span>
+            <div class="flex items-start gap-1.5 leading-snug">
+              <span class="text-indigo-600 font-bold shrink-0">⚡</span>
+              <span class="text-xs sm:text-sm text-slate-800 font-medium">${escapeHtml(clean)}</span>
             </div>
           `;
         }
       });
-      contentDiv.innerHTML = html || `<p class="text-xs text-indigo-400 italic">Streaming...</p>`;
-    }
-
-    function finalizeInlineAiBlock() {
-      if (!activeAiBlock) return;
-      const pulseDot = activeAiBlock.querySelector('.animate-pulse');
-      if (pulseDot) pulseDot.classList.remove('animate-pulse');
-      activeAiBlock = null;
-    }
-
-    function renderInlineAiAnswer(rawText, isStreaming) {
-      createInlineAiBlock('');
-      updateInlineAiBlock(rawText);
-      finalizeInlineAiBlock();
+      centerAiContent.innerHTML = html || `<p class="text-xs text-indigo-400 italic">Streaming...</p>`;
     }
 
     function escapeHtml(str) {
@@ -481,9 +421,9 @@
       window.speechSynthesis.speak(utterance);
     }
 
-    // Initialize
+    // Auto-connect
     connectSpectator();
-    lucide.createIcons();
+    if (window.lucide) lucide.createIcons();
   </script>
 </body>
 </html>
