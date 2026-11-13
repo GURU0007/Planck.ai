@@ -35,15 +35,16 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #94a3b8;
     }
-    /* 60 FPS Kinetic Word Flow: Hardware-Accelerated Smooth Transition (<80ms) */
+    /* 60 FPS Butter-Smooth Kinetic Word Flow (<80ms) */
     @keyframes kWordGlide {
       0% {
         opacity: 0;
-        transform: translateY(4px) scale(0.97);
-        filter: blur(1.5px);
+        transform: translateY(8px) scale(0.95);
+        filter: blur(3px);
       }
       60% {
-        filter: blur(0px);
+        opacity: 0.85;
+        filter: blur(0.5px);
       }
       100% {
         opacity: 1;
@@ -53,9 +54,9 @@
     }
     .k-word {
       display: inline-block;
-      margin-right: 0.28em;
-      animation: kWordGlide 75ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      will-change: transform, opacity;
+      margin-right: 0.3em;
+      animation: kWordGlide 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      will-change: transform, opacity, filter;
       transform-origin: bottom center;
     }
   </style>
@@ -419,7 +420,7 @@
     </div>
   </div>
 
-  <script src="/app.js"></script>
+  <script src="/app.js?v=kinetic-2"></script>
   <script>
     lucide.createIcons();
   </script>

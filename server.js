@@ -12,9 +12,20 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
+// Disable caching so clients and Render CDN always get the freshest 60 FPS assets immediately
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  maxAge: 0
+}));
 
 // Otter-Style Live Session Rooms Network
 // Map: roomId -> { hostWs, spectators: Set(), history: [], currentQuestion: '', currentAnswer: '', pin: null }
