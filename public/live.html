@@ -9,13 +9,13 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    /* Custom scrollbar */
+    /* Custom clean scrollbar */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #f1f5f9;
+      background: transparent;
     }
     ::-webkit-scrollbar-thumb {
       background: #cbd5e1;
@@ -24,12 +24,16 @@
     ::-webkit-scrollbar-thumb:hover {
       background: #94a3b8;
     }
+    html, body {
+      height: 100%;
+      overscroll-behavior: none;
+    }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
+<body class="bg-slate-100 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
 
   <!-- TOP SPECTATOR HEADER -->
-  <header class="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 flex items-center justify-between shrink-0 shadow-xs gap-2">
+  <header class="bg-white border-b border-slate-200 px-4 sm:px-8 py-2.5 flex items-center justify-between shrink-0 shadow-2xs z-20">
     <div class="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
       <div class="bg-gradient-to-br from-indigo-600 to-indigo-900 text-amber-300 p-1.5 sm:p-2 rounded-xl shadow-md flex items-center justify-center ring-2 ring-indigo-500/20">
         <i data-lucide="zap" class="w-4 h-4 sm:w-5 sm:h-5 fill-amber-300 text-amber-300"></i>
@@ -72,11 +76,11 @@
           <i data-lucide="lock" class="w-6 h-6"></i>
         </div>
         <h3 class="text-lg font-bold text-slate-900">Protected Session</h3>
-        <p class="text-xs text-slate-500">The host has protected this live call with a PIN.</p>
+        <p class="text-xs text-slate-500">The host has protected this live session with a PIN.</p>
       </div>
 
       <div>
-        <input type="text" id="pinInput" placeholder="Enter 4-digit PIN" class="w-full text-center text-lg font-mono tracking-widest bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" maxlength="6" />
+        <input type="text" id="pinInput" placeholder="Enter PIN" class="w-full text-center text-lg font-mono tracking-widest bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" maxlength="6" />
         <p id="pinError" class="text-xs text-rose-600 mt-1.5 text-center hidden font-medium">Incorrect PIN. Please try again.</p>
       </div>
 
@@ -86,75 +90,29 @@
     </div>
   </div>
 
-  <!-- MAIN WORKSPACE: 30% QUESTIONS / 70% TALKING POINTS -->
-  <main class="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden relative">
+  <!-- MAIN WORKSPACE: SINGLE WINDOW WITH 3 VERTICAL PARTS (BLANK LEFT 1/3, MIDDLE 1/3 CONTENT, BLANK RIGHT 1/3) -->
+  <main class="flex-1 min-h-0 w-full overflow-hidden flex flex-row bg-slate-100">
+    <!-- LEFT 1/3: BLANK SPACE -->
+    <div class="hidden md:block md:w-1/3 bg-slate-100/70"></div>
 
-    <!-- TOP SECTION (30% on mobile, 50% on desktop) -->
-    <section class="w-full h-[30vh] md:h-full md:w-1/2 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white shrink-0 md:shrink overflow-hidden shadow-xs">
-      <div class="px-3 sm:px-6 py-2 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
-          <h2 class="text-xs sm:text-sm font-semibold text-slate-700">Live Questions & Speech Feed</h2>
-        </div>
-        <span class="text-[10px] text-slate-400 font-mono">Real-time mirror</span>
-      </div>
-
-      <!-- Transcript Scroll Feed -->
-      <div id="specTranscriptContainer" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-2.5">
-        <div id="specEmptyPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-8">
-          <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-            <i data-lucide="radio" class="w-5 h-5 text-indigo-500"></i>
+    <!-- MIDDLE 1/3: SINGLE OTTER WINDOW WITH AUTO-SCROLL -->
+    <div id="specScrollContainer" class="w-full md:w-1/3 bg-white border-x border-slate-200/80 flex flex-col h-full overflow-y-auto shadow-sm">
+      <div id="specFeed" class="p-4 sm:p-6 space-y-3.5 min-h-full flex flex-col justify-start">
+        <!-- Initial Empty State -->
+        <div id="specEmptyPlaceholder" class="my-auto py-16 flex flex-col items-center justify-center text-slate-400 space-y-2">
+          <div class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs">
+            <i data-lucide="radio" class="w-6 h-6"></i>
           </div>
-          <p class="text-xs text-center max-w-xs">Waiting for host to speak. Questions will stream and auto-scroll here in sub-150ms.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- BOTTOM SECTION (70% on mobile, 50% on desktop) -->
-    <section class="w-full flex-1 min-h-0 md:h-full md:w-1/2 flex flex-col bg-slate-50/50 overflow-hidden">
-      <div class="px-3 sm:px-6 py-2 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
-        <div class="flex items-center gap-2">
-          <div class="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
-          <h2 class="text-xs sm:text-sm font-semibold text-slate-800">Live Instant AI</h2>
-          <span class="text-[10px] sm:text-xs bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded border border-emerald-200">Groq LPU (~120ms)</span>
-        </div>
-        <span id="specAnswerBadge" class="text-[10px] sm:text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">Standing by</span>
-      </div>
-
-      <div class="p-3 sm:p-6 flex-1 min-h-0 flex flex-col overflow-y-auto space-y-3">
-        <!-- Detected Question Card -->
-        <div id="specQuestionCard" class="hidden bg-white border border-indigo-100 rounded-xl p-3 sm:p-4 shadow-sm shrink-0">
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1">
-              <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Detected Question
-            </span>
-            <span id="specQuestionTime" class="text-[10px] text-slate-400 font-mono">Just now</span>
-          </div>
-          <p id="specQuestionText" class="text-xs sm:text-sm font-semibold text-slate-900 leading-snug">
-            Waiting for question...
+          <p class="font-bold text-slate-700 text-sm">Live Otter Feed</p>
+          <p class="text-xs text-center max-w-xs text-slate-400">
+            Waiting for speech. Transcribed speech and live AI talking points will appear and auto-scroll here in real-time.
           </p>
         </div>
-
-        <!-- Generated Talking Points Box -->
-        <div class="flex-1 bg-white border border-slate-200 rounded-xl p-3.5 sm:p-5 shadow-sm flex flex-col min-h-[160px]">
-          <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-2 shrink-0">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-              <i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500"></i> Live Talking Points
-            </span>
-            <button id="copySpecAnswerBtn" class="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 transition">
-              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
-            </button>
-          </div>
-
-          <div id="specAnswerContent" class="flex-1 overflow-y-auto font-sans text-xs sm:text-sm text-slate-700 leading-relaxed">
-            <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-6">
-              <i data-lucide="sparkles" class="w-6 h-6 sm:w-8 sm:h-8 text-slate-300"></i>
-              <p class="text-xs text-center max-w-xs">When the host's call triggers an answer, the talking points will mirror live here.</p>
-            </div>
-          </div>
-        </div>
       </div>
-    </section>
+    </div>
+
+    <!-- RIGHT 1/3: BLANK SPACE -->
+    <div class="hidden md:block md:w-1/3 bg-slate-100/70"></div>
   </main>
 
   <script>
@@ -164,7 +122,6 @@
     let roomPin = urlParams.get('pin') || '';
 
     let specWs = null;
-    let specCurrentAnswer = '';
     let specWhisperEnabled = false;
 
     // DOM Elements
@@ -172,14 +129,9 @@
     const hostStatusBadge = document.getElementById('hostStatusBadge');
     const hostStatusDot = document.getElementById('hostStatusDot');
     const hostStatusText = document.getElementById('hostStatusText');
-    const specTranscriptContainer = document.getElementById('specTranscriptContainer');
+    const specScrollContainer = document.getElementById('specScrollContainer');
+    const specFeed = document.getElementById('specFeed');
     const specEmptyPlaceholder = document.getElementById('specEmptyPlaceholder');
-    const specQuestionCard = document.getElementById('specQuestionCard');
-    const specQuestionText = document.getElementById('specQuestionText');
-    const specQuestionTime = document.getElementById('specQuestionTime');
-    const specAnswerBadge = document.getElementById('specAnswerBadge');
-    const specAnswerContent = document.getElementById('specAnswerContent');
-    const copySpecAnswerBtn = document.getElementById('copySpecAnswerBtn');
     const specWhisperToggle = document.getElementById('specWhisperToggle');
     const specWhisperText = document.getElementById('specWhisperText');
 
@@ -189,6 +141,13 @@
     const submitPinBtn = document.getElementById('submitPinBtn');
 
     roomIdDisplay.textContent = roomId;
+
+    // Auto-scroll helper: keeps view pinned to the bottom as text appears
+    function scrollToBottom() {
+      if (specScrollContainer) {
+        specScrollContainer.scrollTop = specScrollContainer.scrollHeight;
+      }
+    }
 
     function connectSpectator() {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -200,7 +159,7 @@
         console.log('[Spectator] Connected to room:', roomId);
         hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
         hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
-        hostStatusText.textContent = 'Live Mirror Active';
+        hostStatusText.textContent = 'Live Active';
       };
 
       specWs.onmessage = (event) => {
@@ -220,6 +179,13 @@
       };
     }
 
+    // Active block tracking in the single window feed
+    let activeSpecBubble = null;
+    let specTurnAccumulator = [];
+    let lastSpecBubbleTime = 0;
+    let activeAiBlock = null;
+    let currentAiAnswerText = '';
+
     function handleSpectatorMessage(data) {
       if (data.type === 'pin_required') {
         pinModal.classList.remove('hidden');
@@ -238,48 +204,53 @@
           hostStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500';
           hostStatusText.textContent = 'Host Standing By';
         }
+
+        // Render past history turns if joining mid-session
         if (data.history && data.history.length > 0) {
-          specEmptyPlaceholder.classList.add('hidden');
+          if (specEmptyPlaceholder) specEmptyPlaceholder.classList.add('hidden');
           data.history.forEach(turn => {
             renderSpectatorTranscript(turn.question, true, 'Speaker');
+            if (turn.answer) {
+              renderInlineAiAnswer(turn.answer, false);
+            }
           });
-        }
-        if (data.currentQuestion) {
-          specQuestionCard.classList.remove('hidden');
-          specQuestionText.textContent = `"${data.currentQuestion}"`;
-        }
-        if (data.currentAnswer) {
-          renderSpectatorAnswer(data.currentAnswer);
+          scrollToBottom();
+        } else if (data.currentQuestion) {
+          if (specEmptyPlaceholder) specEmptyPlaceholder.classList.add('hidden');
+          renderSpectatorTranscript(data.currentQuestion, true, 'Speaker');
+          if (data.currentAnswer) {
+            renderInlineAiAnswer(data.currentAnswer, false);
+          }
+          scrollToBottom();
         }
       }
 
       if (data.type === 'transcript') {
-        specEmptyPlaceholder.classList.add('hidden');
-        renderSpectatorTranscript(data.text, data.isFinal, data.speaker !== null ? `Speaker ${data.speaker + 1}` : 'Speaker');
+        if (specEmptyPlaceholder) specEmptyPlaceholder.classList.add('hidden');
+        const speakerLabel = data.speaker !== null && data.speaker !== undefined ? `Speaker ${data.speaker + 1}` : 'Speaker';
+        renderSpectatorTranscript(data.text, data.isFinal, speakerLabel);
+        scrollToBottom();
       }
 
       if (data.type === 'answer_start') {
-        specCurrentAnswer = '';
-        specQuestionCard.classList.remove('hidden');
-        specQuestionText.textContent = `"${data.question}"`;
-        specQuestionTime.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        specAnswerBadge.className = 'text-[11px] bg-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 rounded-full animate-pulse';
-        specAnswerBadge.textContent = '⚡ Streaming Answer (~120ms)...';
-        specAnswerContent.innerHTML = '';
+        if (specEmptyPlaceholder) specEmptyPlaceholder.classList.add('hidden');
+        currentAiAnswerText = '';
+        createInlineAiBlock(data.question);
+        scrollToBottom();
       }
 
       if (data.type === 'answer_token') {
-        specCurrentAnswer += data.token;
-        renderSpectatorAnswer(specCurrentAnswer);
-        specAnswerContent.scrollTop = specAnswerContent.scrollHeight;
+        currentAiAnswerText += data.token;
+        updateInlineAiBlock(currentAiAnswerText);
+        scrollToBottom();
       }
 
       if (data.type === 'answer_done') {
-        specAnswerBadge.className = 'text-[11px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full';
-        specAnswerBadge.textContent = '✓ Complete';
-        if (specWhisperEnabled && specCurrentAnswer) {
-          speakSpectatorWhisper(specCurrentAnswer);
+        finalizeInlineAiBlock();
+        if (specWhisperEnabled && currentAiAnswerText) {
+          speakSpectatorWhisper(currentAiAnswerText);
         }
+        scrollToBottom();
       }
 
       if (data.type === 'host_status') {
@@ -295,10 +266,7 @@
       }
     }
 
-    let activeSpecBubble = null;
-    let specTurnAccumulator = [];
-    let lastSpecBubbleTime = 0;
-
+    // 1. Render Live Speech Paragraphs in the Single Window
     function renderSpectatorTranscript(text, isFinal, speakerLabel) {
       const now = Date.now();
       if (now - lastSpecBubbleTime > 3000 && activeSpecBubble) {
@@ -309,18 +277,20 @@
 
       if (!activeSpecBubble) {
         activeSpecBubble = document.createElement('div');
-        activeSpecBubble.className = 'bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-1 transition';
+        activeSpecBubble.className = 'p-3 bg-slate-50 border border-slate-200/80 rounded-xl space-y-1.5 transition';
+        const initial = speakerLabel.charAt(0).toUpperCase();
         activeSpecBubble.innerHTML = `
-          <div class="flex items-center justify-between text-[11px] text-slate-400">
-            <span class="font-bold text-indigo-600 flex items-center gap-1.5">
+          <div class="flex items-center justify-between text-xs text-slate-500">
+            <span class="font-bold text-slate-800 flex items-center gap-1.5">
+              <span class="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 text-[10px] font-extrabold flex items-center justify-center">${initial}</span>
               <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-              ${escapeHtml(speakerLabel)}
+              <span>${escapeHtml(speakerLabel)}</span>
             </span>
-            <span class="font-mono">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <span class="font-mono text-[10px] text-slate-400">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
-          <p class="text-xs sm:text-sm text-slate-800 leading-relaxed spec-bubble-text"></p>
+          <p class="text-xs sm:text-sm text-slate-800 leading-relaxed font-medium spec-bubble-text"></p>
         `;
-        specTranscriptContainer.appendChild(activeSpecBubble);
+        specFeed.appendChild(activeSpecBubble);
         specTurnAccumulator = [];
       }
 
@@ -333,8 +303,9 @@
         : text;
 
       const p = activeSpecBubble.querySelector('.spec-bubble-text');
-      p.textContent = fullText;
-      specTranscriptContainer.scrollTop = specTranscriptContainer.scrollHeight;
+      if (p) {
+        p.textContent = fullText;
+      }
 
       if (isFinal) {
         const dot = activeSpecBubble.querySelector('.animate-ping');
@@ -348,23 +319,68 @@
       }
     }
 
-    function renderSpectatorAnswer(rawText) {
+    // 2. Render Inline AI Talking Points inside the Single Window
+    function createInlineAiBlock(question) {
+      activeAiBlock = document.createElement('div');
+      activeAiBlock.className = 'my-2.5 p-3.5 bg-gradient-to-br from-indigo-50/70 to-purple-50/40 border border-indigo-200/80 rounded-xl space-y-2 shadow-2xs';
+      activeAiBlock.innerHTML = `
+        <div class="flex items-center justify-between border-b border-indigo-100/80 pb-2">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+            <span class="text-xs font-bold text-indigo-900 flex items-center gap-1">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-600"></i>
+              <span>AI Talking Points</span>
+            </span>
+          </div>
+          <span class="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded font-semibold">Groq LPU (~120ms)</span>
+        </div>
+        <div class="spec-ai-content text-xs sm:text-sm text-slate-800 space-y-1.5 leading-snug">
+          <p class="text-xs text-indigo-500 italic flex items-center gap-1.5">
+            <span class="w-3 h-3 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></span>
+            <span>Generating points...</span>
+          </p>
+        </div>
+      `;
+      specFeed.appendChild(activeAiBlock);
+      lucide.createIcons();
+    }
+
+    function updateInlineAiBlock(rawText) {
+      if (!activeAiBlock) return;
+      const contentDiv = activeAiBlock.querySelector('.spec-ai-content');
+      if (!contentDiv) return;
+
       const cleanLines = rawText.split('\n').filter(l => l.trim().length > 0);
-      let html = '<div class="space-y-2">';
+      let html = '';
       cleanLines.forEach(line => {
         let clean = line.replace(/^\s*[-*•]\s*/, '').replace(/^\s*\d+\.\s*/, '').trim();
-        html += `
-          <div class="flex items-start gap-2 bg-indigo-50/50 p-2 rounded-lg border border-indigo-100/60">
-            <span class="text-indigo-600 font-bold shrink-0 mt-0.5">⚡</span>
-            <span class="text-xs sm:text-sm text-slate-800 leading-snug">${escapeHtml(clean)}</span>
-          </div>
-        `;
+        if (clean) {
+          html += `
+            <div class="flex items-start gap-2 bg-white/90 p-2 rounded-lg border border-indigo-100/70 shadow-2xs">
+              <span class="text-indigo-600 font-bold shrink-0 mt-0.5">⚡</span>
+              <span class="text-xs sm:text-[13px] text-slate-800 leading-snug font-medium">${escapeHtml(clean)}</span>
+            </div>
+          `;
+        }
       });
-      html += '</div>';
-      specAnswerContent.innerHTML = html;
+      contentDiv.innerHTML = html || `<p class="text-xs text-indigo-400 italic">Streaming...</p>`;
+    }
+
+    function finalizeInlineAiBlock() {
+      if (!activeAiBlock) return;
+      const pulseDot = activeAiBlock.querySelector('.animate-pulse');
+      if (pulseDot) pulseDot.classList.remove('animate-pulse');
+      activeAiBlock = null;
+    }
+
+    function renderInlineAiAnswer(rawText, isStreaming) {
+      createInlineAiBlock('');
+      updateInlineAiBlock(rawText);
+      finalizeInlineAiBlock();
     }
 
     function escapeHtml(str) {
+      if (!str) return '';
       const div = document.createElement('div');
       div.textContent = str;
       return div.innerHTML;
@@ -381,48 +397,42 @@
       }
     });
 
-    // Copy Answer
-    copySpecAnswerBtn.addEventListener('click', () => {
-      if (specCurrentAnswer) {
-        navigator.clipboard.writeText(specCurrentAnswer);
-        copySpecAnswerBtn.innerHTML = '<span class="text-emerald-600 font-bold">✓ Copied!</span>';
-        setTimeout(() => {
-          copySpecAnswerBtn.innerHTML = '<i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy';
-          lucide.createIcons();
-        }, 1500);
+    pinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        submitPinBtn.click();
       }
     });
 
-    // Spectator Whisper Toggle
+    // Optional Spectator Whisper
     specWhisperToggle.addEventListener('click', () => {
       specWhisperEnabled = !specWhisperEnabled;
       if (specWhisperEnabled) {
-        specWhisperToggle.className = 'border border-emerald-300 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
+        specWhisperToggle.className = 'border border-emerald-500 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
         specWhisperText.textContent = 'Audio: ON';
-        // Prime synthesis on mobile
         if ('speechSynthesis' in window) {
-          window.speechSynthesis.speak(new SpeechSynthesisUtterance(' '));
+          const silent = new SpeechSynthesisUtterance(' ');
+          window.speechSynthesis.speak(silent);
         }
       } else {
         specWhisperToggle.className = 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
         specWhisperText.textContent = 'Audio: OFF';
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
       }
     });
 
     function speakSpectatorWhisper(text) {
       if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
-      const clean = text.replace(/[*_#`~>]/g, ' ').replace(/\s+/g, ' ').trim();
-      const utt = new SpeechSynthesisUtterance(clean);
-      utt.rate = 1.25;
-      window.speechSynthesis.speak(utt);
+      const utterance = new SpeechSynthesisUtterance(text.replace(/[*_#`-]/g, ''));
+      utterance.rate = 1.25;
+      window.speechSynthesis.speak(utterance);
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-      lucide.createIcons();
-      connectSpectator();
-    });
+    // Initialize
+    connectSpectator();
+    lucide.createIcons();
   </script>
 </body>
 </html>
