@@ -3,27 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>planck.ai — Live Interview Copilot</title>
+  <title>planck.ai — Interview Copilot</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
-    /* Custom clean scrollbars */
+    /* Dark scrollbars */
     ::-webkit-scrollbar {
-      width: 5px;
-      height: 5px;
+      width: 6px;
+      height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #f8fafc;
-      border-radius: 4px;
+      background: #020617;
     }
     ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
+      background: #1e293b;
       border-radius: 4px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
+      background: #334155;
     }
     html, body {
       height: 100%;
@@ -33,10 +32,10 @@
     }
     /* Natural top fade mask for teleprompter */
     .mask-top-fade {
-      mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 8%);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
     }
-    /* Pure Liquid Silk Kinetic Word Flow: Zero vertical drop, soft optical bloom */
+    /* Liquid Silk Word Flow */
     @keyframes butterSilk {
       0% {
         opacity: 0;
@@ -53,7 +52,7 @@
     }
     .k-word {
       display: inline;
-      animation: butterSilk 280ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      animation: butterSilk 260ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
       will-change: opacity, filter;
     }
     @keyframes sentenceRollUp {
@@ -65,30 +64,39 @@
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
+<body class="bg-slate-950 text-slate-100 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden selection:bg-indigo-500 selection:text-white">
+
+  <!-- Ambient Glow Background -->
+  <div class="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+    <div class="absolute -top-32 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/2 -right-20 w-80 h-80 bg-cyan-600/10 rounded-full blur-3xl"></div>
+  </div>
 
   <!-- TOP HEADER: VIEW MODE TOGGLE & STATUS -->
-  <header class="bg-white border-b border-slate-200 px-3 sm:px-5 py-2 flex items-center justify-between shrink-0 shadow-2xs z-20 gap-2">
-    <!-- Logo & Title -->
-    <div class="flex items-center space-x-2 shrink-0">
-      <div class="bg-gradient-to-br from-indigo-600 to-indigo-900 text-amber-300 p-1.5 rounded-xl shadow-md flex items-center justify-center ring-2 ring-indigo-500/20 shrink-0">
+  <header class="bg-slate-950/90 border-b border-slate-800/80 px-3 sm:px-5 py-2.5 flex items-center justify-between shrink-0 shadow-lg z-20 gap-2 backdrop-blur-md">
+    <!-- Logo & Back Link -->
+    <div class="flex items-center space-x-2.5 shrink-0">
+      <a href="/" class="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition" title="Back to Planck.ai Landing">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+      </a>
+      <div class="bg-gradient-to-br from-indigo-500 to-indigo-800 text-amber-300 p-1.5 rounded-xl shadow-md flex items-center justify-center ring-1 ring-indigo-400/30 shrink-0">
         <i data-lucide="zap" class="w-3.5 h-3.5 fill-amber-300 text-amber-300"></i>
       </div>
       <div>
-        <h1 class="font-extrabold text-xs sm:text-sm text-slate-900 tracking-tight leading-tight flex items-center gap-1.5">
-          planck<span class="text-indigo-600">.ai</span>
-          <span class="hidden xs:inline-block text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Copilot</span>
+        <h1 class="font-extrabold text-xs sm:text-sm text-white tracking-tight leading-tight flex items-center gap-1.5">
+          planck<span class="text-indigo-400">.ai</span>
+          <span class="text-[10px] bg-indigo-950/80 text-indigo-300 border border-indigo-800/60 font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Copilot</span>
         </h1>
       </div>
     </div>
 
     <!-- Mode Selector: Q&A Copilot vs Teleprompter -->
-    <div class="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200 text-xs shrink-0 font-semibold">
-      <button id="viewQaBtn" class="px-2.5 py-1 rounded-md bg-white text-indigo-700 shadow-2xs transition flex items-center gap-1">
-        <i data-lucide="sparkles" class="w-3 h-3 text-indigo-600"></i>
+    <div class="flex items-center bg-slate-900/90 rounded-lg p-0.5 border border-slate-800 text-xs shrink-0 font-semibold">
+      <button id="viewQaBtn" class="px-2.5 py-1 rounded-md bg-indigo-600 text-white shadow-xs transition flex items-center gap-1 font-bold">
+        <i data-lucide="sparkles" class="w-3 h-3 text-indigo-200"></i>
         <span>Q&A Copilot</span>
       </button>
-      <button id="viewPrompterBtn" class="px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-800 transition flex items-center gap-1">
+      <button id="viewPrompterBtn" class="px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition flex items-center gap-1 font-medium">
         <i data-lucide="align-left" class="w-3 h-3 text-slate-400"></i>
         <span class="hidden xs:inline">Prompter</span>
       </button>
@@ -97,119 +105,119 @@
     <!-- Spectator Status Controls -->
     <div class="flex items-center gap-1.5 shrink-0">
       <!-- Live Room Badge -->
-      <div class="hidden sm:flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-700 px-2 py-1 rounded-lg text-xs font-mono font-semibold shrink-0 cursor-pointer" title="Click to switch Room ID" id="roomIdDisplayBox">
-        <span class="text-slate-400">Room:</span>
+      <div class="hidden sm:flex items-center gap-1 bg-slate-900/90 border border-slate-800 text-slate-300 px-2 py-1 rounded-lg text-xs font-mono font-semibold shrink-0 cursor-pointer hover:border-slate-700 transition" title="Click to switch Room ID" id="roomIdDisplayBox">
+        <span class="text-slate-500">Room:</span>
         <span id="roomIdDisplay" class="truncate max-w-[80px]">...</span>
       </div>
 
       <!-- Host Connection Indicator -->
-      <div id="hostStatusBadge" class="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0">
-        <span id="hostStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+      <div id="hostStatusBadge" class="flex items-center gap-1.5 bg-amber-950/60 border border-amber-800/60 text-amber-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0">
+        <span id="hostStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
         <span id="hostStatusText" class="hidden xs:inline">Connecting</span>
       </div>
 
       <!-- Always on Top Floating Pin (Document Picture-in-Picture) -->
-      <button id="pipFloatBtn" class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition shrink-0" title="Float window Always on Top above all apps">
-        <i data-lucide="pin" class="w-3 h-3 text-indigo-600"></i>
+      <button id="pipFloatBtn" class="border border-indigo-700/60 bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition shrink-0" title="Float window Always on Top above all apps">
+        <i data-lucide="pin" class="w-3 h-3 text-indigo-400"></i>
         <span class="hidden sm:inline">Float</span>
       </button>
     </div>
   </header>
 
   <!-- PIN REQUIRED OVERLAY -->
-  <div id="pinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 p-5 sm:p-6 space-y-4 mx-auto">
+  <div id="pinModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 rounded-2xl w-full max-w-sm shadow-2xl border border-slate-800 p-5 sm:p-6 space-y-4 mx-auto text-white">
       <div class="text-center space-y-1">
-        <div class="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-2xs">
+        <div class="w-10 h-10 rounded-full bg-indigo-950/80 border border-indigo-800 text-indigo-400 flex items-center justify-center mx-auto shadow-sm">
           <i data-lucide="lock" class="w-5 h-5"></i>
         </div>
-        <h3 class="text-base sm:text-lg font-bold text-slate-900">Protected Session</h3>
-        <p class="text-xs text-slate-500">The host has protected this live session with a PIN.</p>
+        <h3 class="text-base sm:text-lg font-bold text-white">Protected Session</h3>
+        <p class="text-xs text-slate-400">The host has protected this live session with a PIN.</p>
       </div>
 
       <div>
-        <input type="text" id="pinInput" placeholder="Enter PIN" class="w-full text-center text-base sm:text-lg font-mono tracking-widest bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" maxlength="6" />
-        <p id="pinError" class="text-xs text-rose-600 mt-1.5 text-center hidden font-medium">Incorrect PIN. Please try again.</p>
+        <input type="text" id="pinInput" placeholder="Enter PIN" class="w-full text-center text-base sm:text-lg font-mono tracking-widest bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 sm:py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" maxlength="6" />
+        <p id="pinError" class="text-xs text-rose-400 mt-1.5 text-center hidden font-medium">Incorrect PIN. Please try again.</p>
       </div>
 
-      <button id="submitPinBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition text-sm sm:text-base">
+      <button id="submitPinBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl shadow-md transition text-sm sm:text-base">
         Join Live Session
       </button>
     </div>
   </div>
 
   <!-- VIEW 1: DEDICATED Q&A COPILOT (DEFAULT PRIMARY INTERVIEW VIEW) -->
-  <main id="qaViewContainer" class="flex-1 min-h-0 w-full overflow-hidden flex flex-col p-2.5 sm:p-4 gap-2.5 sm:gap-3 bg-slate-100">
+  <main id="qaViewContainer" class="flex-1 min-h-0 w-full overflow-hidden flex flex-col p-2.5 sm:p-4 gap-2.5 sm:gap-3 bg-slate-950">
     
     <!-- TOP CARD: INTERVIEWER QUESTION & LIVE SPEECH -->
-    <div id="interviewerQuestionCard" class="bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-sm shrink-0 transition">
+    <div id="interviewerQuestionCard" class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-3.5 sm:p-4 backdrop-blur-md shadow-lg shadow-black/20 shrink-0 transition">
       <div class="flex items-center justify-between mb-1.5">
-        <div class="flex items-center gap-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider">
-          <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+        <div class="flex items-center gap-1.5 text-[11px] font-mono font-bold text-indigo-400 uppercase tracking-wider">
+          <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
           <span id="questionCardLabel">Interviewer Speaking (Live)</span>
         </div>
-        <span id="questionTimestamp" class="text-[11px] font-mono text-slate-400">Listening...</span>
+        <span id="questionTimestamp" class="text-[11px] font-mono text-slate-500">Listening...</span>
       </div>
       
       <!-- Liquid Silk Live Question Text -->
       <div class="min-h-[38px] flex items-center">
-        <p id="qaLiveSpeechText" class="text-sm sm:text-base md:text-lg font-bold text-slate-900 leading-snug break-words">
-          <span class="text-slate-400 font-normal italic text-sm">Listening for interviewer's question... (Your mic is excluded)</span>
-          <span class="inline-block w-1.5 h-4 bg-indigo-600 ml-1.5 align-middle animate-pulse rounded-2xs"></span>
+        <p id="qaLiveSpeechText" class="text-sm sm:text-base md:text-lg font-bold text-white leading-snug break-words">
+          <span class="text-slate-500 font-normal italic text-sm">Listening for interviewer's question... (Your mic is excluded)</span>
+          <span class="inline-block w-1.5 h-4 bg-indigo-500 ml-1.5 align-middle animate-pulse rounded-2xs"></span>
         </p>
       </div>
     </div>
 
     <!-- MAIN CARD: REALTIME INSTANT AI ANSWER & TALKING POINTS -->
-    <div class="flex-1 min-h-0 bg-white border border-slate-200/90 rounded-2xl p-3.5 sm:p-5 shadow-sm flex flex-col overflow-hidden">
+    <div class="flex-1 min-h-0 bg-slate-900/90 border border-slate-800/80 rounded-2xl p-3.5 sm:p-5 backdrop-blur-md shadow-lg shadow-black/20 flex flex-col overflow-hidden">
       <!-- Answer Subheader -->
-      <div class="flex items-center justify-between mb-2.5 border-b border-slate-100 pb-2.5 shrink-0">
+      <div class="flex items-center justify-between mb-2.5 border-b border-slate-800/80 pb-2.5 shrink-0">
         <div class="flex items-center gap-2">
-          <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]"></div>
-          <h2 class="text-xs sm:text-sm font-bold text-slate-800">Instant AI Talking Points</h2>
-          <span class="text-[10px] sm:text-xs bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded-full border border-emerald-200">~120ms First Token</span>
+          <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>
+          <h2 class="text-xs sm:text-sm font-bold text-white">Instant AI Talking Points</h2>
+          <span class="text-[10px] sm:text-xs bg-emerald-950/60 text-emerald-300 font-mono px-2 py-0.5 rounded-full border border-emerald-800/60">~120ms First Token</span>
         </div>
         <div class="flex items-center gap-2">
-          <button id="qaCopyBtn" class="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 font-semibold transition" title="Copy answer">
+          <button id="qaCopyBtn" class="text-xs text-slate-400 hover:text-indigo-400 flex items-center gap-1 font-semibold transition" title="Copy answer">
             <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span class="hidden xs:inline">Copy</span>
           </button>
-          <span id="qaAnswerStatusBadge" class="text-[10px] sm:text-xs bg-slate-100 text-slate-500 px-2.5 py-0.5 rounded-full font-semibold">Standing by</span>
+          <span id="qaAnswerStatusBadge" class="text-[10px] sm:text-xs bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-semibold border border-slate-700/60">Standing by</span>
         </div>
       </div>
 
       <!-- Answer Content Stream -->
-      <div id="qaAnswerContent" class="flex-1 overflow-y-auto font-sans text-sm sm:text-base text-slate-800 leading-relaxed pr-1 space-y-2">
-        <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-6">
-          <div class="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
-            <i data-lucide="sparkles" class="w-5 h-5 text-indigo-600"></i>
+      <div id="qaAnswerContent" class="flex-1 overflow-y-auto font-sans text-sm sm:text-base text-slate-200 leading-relaxed pr-1 space-y-2">
+        <div class="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 py-6">
+          <div class="w-10 h-10 rounded-2xl bg-indigo-950/60 border border-indigo-800/60 flex items-center justify-center">
+            <i data-lucide="sparkles" class="w-5 h-5 text-indigo-400"></i>
           </div>
-          <p class="text-xs text-center max-w-sm text-slate-500 leading-relaxed">
-            When the interviewer finishes speaking, sub-120ms talking points and solutions will stream right here.
+          <p class="text-xs text-center max-w-sm text-slate-400 leading-relaxed">
+            When the interviewer finishes speaking, sub-120ms talking points and solutions stream right here.
           </p>
         </div>
       </div>
     </div>
 
     <!-- BOTTOM DRAWER: PAST TURNS HISTORY (COLLAPSIBLE) -->
-    <div id="qaHistoryBar" class="bg-white/80 border border-slate-200 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-slate-600 shrink-0">
+    <div id="qaHistoryBar" class="bg-slate-900/80 border border-slate-800/80 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-slate-400 shrink-0">
       <div class="flex items-center gap-2 truncate">
-        <i data-lucide="history" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
-        <span class="font-bold text-slate-700 shrink-0">History:</span>
+        <i data-lucide="history" class="w-3.5 h-3.5 text-slate-500 shrink-0"></i>
+        <span class="font-bold text-slate-300 shrink-0">History:</span>
         <span id="qaHistoryPreview" class="truncate text-slate-500 text-[11px]">No previous turns yet</span>
       </div>
-      <button id="qaHistoryToggleBtn" class="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 shrink-0 ml-2">
+      <button id="qaHistoryToggleBtn" class="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 shrink-0 ml-2">
         View All (<span id="qaHistoryCount">0</span>)
       </button>
     </div>
 
     <!-- Expandable History Modal / Drawer -->
-    <div id="qaHistoryModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 flex items-center justify-center p-4 hidden">
-      <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-slate-200 p-5 space-y-3 max-h-[80vh] flex flex-col">
-        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-          <h3 class="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-            <i data-lucide="history" class="w-4 h-4 text-indigo-600"></i> Past Interview Questions
+    <div id="qaHistoryModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 flex items-center justify-center p-4 hidden">
+      <div class="bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-800 p-5 space-y-3 max-h-[80vh] flex flex-col text-white">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h3 class="font-bold text-white text-sm flex items-center gap-1.5">
+            <i data-lucide="history" class="w-4 h-4 text-indigo-400"></i> Past Interview Questions
           </h3>
-          <button id="closeQaHistoryBtn" class="text-slate-400 hover:text-slate-700 p-1">
+          <button id="closeQaHistoryBtn" class="text-slate-400 hover:text-white p-1">
             <i data-lucide="x" class="w-4 h-4"></i>
           </button>
         </div>
@@ -222,36 +230,36 @@
   </main>
 
   <!-- VIEW 2: CONTINUOUS TELEPROMPTER VIEW (OPTIONAL SWITCH) -->
-  <main id="prompterViewContainer" class="flex-1 min-h-0 w-full overflow-hidden flex flex-row bg-slate-100 hidden">
+  <main id="prompterViewContainer" class="flex-1 min-h-0 w-full overflow-hidden flex flex-row bg-slate-950 hidden">
     <!-- LEFT 1/3: BLANK SPACE (DESKTOP ONLY) -->
-    <div class="hidden md:block md:w-1/3 bg-slate-100/70"></div>
+    <div class="hidden md:block md:w-1/3 bg-slate-950"></div>
 
     <!-- MIDDLE 1/3: PURE TELEPROMPTER STAGE -->
-    <div class="w-full md:w-1/3 h-full flex flex-col justify-between relative overflow-hidden bg-white border-x border-slate-200/80 shadow-sm">
+    <div class="w-full md:w-1/3 h-full flex flex-col justify-between relative overflow-hidden bg-slate-900/90 border-x border-slate-800/80 shadow-lg shadow-black/20">
       
       <!-- TOP 50%: PREVIOUS CONTINUOUS PROMPTS -->
       <div id="historyScrollContainer" class="flex-1 w-full overflow-y-auto px-4 sm:px-8 md:px-10 py-3 sm:py-5 mask-top-fade overscroll-contain select-text">
         <div id="historyFeed" class="min-h-full flex flex-col">
-          <div id="continuousTextFlow" class="mt-auto space-y-3 sm:space-y-4 text-slate-800 text-sm sm:text-base md:text-lg leading-relaxed font-medium"></div>
+          <div id="continuousTextFlow" class="mt-auto space-y-3 sm:space-y-4 text-slate-300 text-sm sm:text-base md:text-lg leading-relaxed font-medium"></div>
         </div>
       </div>
 
       <!-- EXACT VERTICAL CENTER LINE: FRESH PROMPT -->
-      <div id="centerPromptArea" class="w-full px-4 sm:px-8 md:px-10 py-3.5 sm:py-5 bg-white z-10 shrink-0 border-t border-b border-indigo-100/80">
+      <div id="centerPromptArea" class="w-full px-4 sm:px-8 md:px-10 py-3.5 sm:py-5 bg-slate-950 z-10 shrink-0 border-t border-b border-indigo-500/30">
         <div class="flex items-start">
-          <p id="liveCenterPrompt" class="text-lg sm:text-xl md:text-2xl font-black text-slate-950 leading-snug sm:leading-relaxed break-words flex-1">
-            <span id="centerPromptText" class="text-slate-400 font-normal italic text-sm sm:text-base">Waiting for interviewer's speech...</span>
-            <span id="centerPromptCursor" class="inline-block w-2 sm:w-2.5 h-4 sm:h-5 md:h-6 bg-indigo-600 ml-1 sm:ml-1.5 align-middle animate-pulse rounded-2xs"></span>
+          <p id="liveCenterPrompt" class="text-lg sm:text-xl md:text-2xl font-black text-white leading-snug sm:leading-relaxed break-words flex-1">
+            <span id="centerPromptText" class="text-slate-500 font-normal italic text-sm sm:text-base">Waiting for interviewer's speech...</span>
+            <span id="centerPromptCursor" class="inline-block w-2 sm:w-2.5 h-4 sm:h-5 md:h-6 bg-indigo-500 ml-1 sm:ml-1.5 align-middle animate-pulse rounded-2xs"></span>
           </p>
         </div>
       </div>
 
       <!-- BOTTOM 50%: DOWN NOT NEEDED -->
-      <div class="flex-1 w-full bg-white pointer-events-none"></div>
+      <div class="flex-1 w-full bg-slate-900/90 pointer-events-none"></div>
     </div>
 
     <!-- RIGHT 1/3: BLANK SPACE (DESKTOP ONLY) -->
-    <div class="hidden md:block md:w-1/3 bg-slate-100/70"></div>
+    <div class="hidden md:block md:w-1/3 bg-slate-950"></div>
   </main>
 
   <script>
@@ -261,7 +269,7 @@
     let roomPin = urlParams.get('pin') || '';
 
     let specWs = null;
-    let activeView = 'qa'; // Default to Q&A Copilot mode!
+    let activeView = 'qa'; // Default to Q&A Copilot mode
 
     // DOM Elements - General & Status
     const roomIdDisplay = document.getElementById('roomIdDisplay');
@@ -318,13 +326,13 @@
       if (view === 'qa') {
         qaViewContainer.classList.remove('hidden');
         prompterViewContainer.classList.add('hidden');
-        viewQaBtn.className = 'px-2.5 py-1 rounded-md bg-white text-indigo-700 shadow-2xs transition flex items-center gap-1 font-bold';
-        viewPrompterBtn.className = 'px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-800 transition flex items-center gap-1 font-medium';
+        viewQaBtn.className = 'px-2.5 py-1 rounded-md bg-indigo-600 text-white shadow-xs transition flex items-center gap-1 font-bold';
+        viewPrompterBtn.className = 'px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition flex items-center gap-1 font-medium';
       } else {
         prompterViewContainer.classList.remove('hidden');
         qaViewContainer.classList.add('hidden');
-        viewPrompterBtn.className = 'px-2.5 py-1 rounded-md bg-white text-indigo-700 shadow-2xs transition flex items-center gap-1 font-bold';
-        viewQaBtn.className = 'px-2.5 py-1 rounded-md text-slate-500 hover:text-slate-800 transition flex items-center gap-1 font-medium';
+        viewPrompterBtn.className = 'px-2.5 py-1 rounded-md bg-indigo-600 text-white shadow-xs transition flex items-center gap-1 font-bold';
+        viewQaBtn.className = 'px-2.5 py-1 rounded-md text-slate-400 hover:text-slate-200 transition flex items-center gap-1 font-medium';
       }
       if (window.lucide) lucide.createIcons();
     }
@@ -343,7 +351,7 @@
     let sentenceCountInParagraph = 0;
     let lastSentenceTime = 0;
 
-    // 60 FPS KINETIC WORD STREAMER (<80ms LATENCY)
+    // 60 FPS Kinetic Word Streamer
     class KineticStreamer {
       constructor(containerElement) {
         this.container = containerElement;
@@ -462,8 +470,8 @@
       let specHeartbeat = null;
       specWs.onopen = () => {
         console.log('[Spectator] Connected to room:', roomId);
-        hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
-        hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0';
+        hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+        hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0';
         hostStatusText.textContent = 'Listening to Call';
         if (specHeartbeat) clearInterval(specHeartbeat);
         specHeartbeat = setInterval(() => {
@@ -484,8 +492,8 @@
 
       specWs.onclose = () => {
         if (specHeartbeat) clearInterval(specHeartbeat);
-        hostStatusBadge.className = 'flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-500 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
-        hostStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400 shrink-0';
+        hostStatusBadge.className = 'flex items-center gap-1.5 bg-slate-900 border border-slate-800 text-slate-400 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+        hostStatusDot.className = 'w-2 h-2 rounded-full bg-slate-500 shrink-0';
         hostStatusText.textContent = 'Disconnected';
         setTimeout(connectSpectator, 3000);
       };
@@ -502,8 +510,8 @@
         pinModal.classList.add('hidden');
         if (data.roomId) roomIdDisplay.textContent = data.roomId;
         if (data.hostActive) {
-          hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
-          hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0';
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0';
           hostStatusText.textContent = 'Listening to Call';
         }
 
@@ -530,7 +538,7 @@
         qaLiveSpeechText.innerHTML = `"${escapeHtml(data.question)}"`;
 
         // Update Answer Card
-        qaAnswerStatusBadge.className = 'text-[10px] sm:text-xs bg-indigo-100 text-indigo-700 font-bold px-2.5 py-0.5 rounded-full animate-pulse';
+        qaAnswerStatusBadge.className = 'text-[10px] sm:text-xs bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 font-bold px-2.5 py-0.5 rounded-full animate-pulse';
         qaAnswerStatusBadge.textContent = '⚡ Streaming Answer (~120ms)...';
         qaAnswerContent.innerHTML = '';
       }
@@ -542,7 +550,7 @@
       }
 
       if (data.type === 'answer_done') {
-        qaAnswerStatusBadge.className = 'text-[10px] sm:text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full';
+        qaAnswerStatusBadge.className = 'text-[10px] sm:text-xs bg-emerald-950/80 border border-emerald-800/60 text-emerald-300 font-bold px-2.5 py-0.5 rounded-full';
         qaAnswerStatusBadge.textContent = '✓ Ready to Speak';
 
         // Add to past turns
@@ -592,12 +600,12 @@
     // Render formatted clean answers with bold tags, bullet points, and code
     function renderFormattedQaAnswer(text) {
       if (!text || !text.trim()) {
-        qaAnswerContent.innerHTML = `<p class="text-xs text-slate-400 italic">Streaming answer...</p>`;
+        qaAnswerContent.innerHTML = `<p class="text-xs text-slate-500 italic">Streaming answer...</p>`;
         return;
       }
 
       // Convert **bold** to strong HTML
-      let cleaned = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>');
+      let cleaned = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
       cleaned = cleaned.replace(/\*(.*?)\*/g, '$1');
       cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 
@@ -608,9 +616,9 @@
         const numMatch = line.match(/^(\d+)[.)]\s*(.*)/);
         if (numMatch) {
           return `
-            <div class="flex items-start gap-2.5 py-1.5 border-b border-slate-100 last:border-0">
-              <span class="shrink-0 w-5 h-5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center border border-indigo-200 mt-0.5">${numMatch[1]}</span>
-              <div class="flex-1 text-slate-900 font-medium text-sm sm:text-base leading-snug">${numMatch[2]}</div>
+            <div class="flex items-start gap-2.5 py-1.5 border-b border-slate-800/60 last:border-0">
+              <span class="shrink-0 w-5 h-5 rounded-md bg-indigo-950 text-indigo-300 font-bold text-xs flex items-center justify-center border border-indigo-800/80 mt-0.5">${numMatch[1]}</span>
+              <div class="flex-1 text-slate-100 font-medium text-sm sm:text-base leading-snug">${numMatch[2]}</div>
             </div>
           `;
         }
@@ -618,17 +626,17 @@
         if (line.startsWith('•') || line.startsWith('-')) {
           const content = line.replace(/^[•\-]\s*/, '');
           return `
-            <div class="flex items-start gap-2 py-1 text-slate-900 font-medium text-sm sm:text-base leading-snug">
-              <span class="text-indigo-600 font-bold text-base leading-tight">•</span>
+            <div class="flex items-start gap-2 py-1 text-slate-100 font-medium text-sm sm:text-base leading-snug">
+              <span class="text-indigo-400 font-bold text-base leading-tight">•</span>
               <div class="flex-1">${content}</div>
             </div>
           `;
         }
         // Code block or standard paragraph
         if (line.startsWith('```') || line.endsWith('```')) {
-          return `<pre class="bg-slate-900 text-amber-300 p-2.5 rounded-xl font-mono text-xs overflow-x-auto my-1.5">${escapeHtml(line.replace(/```[a-z]*/g, ''))}</pre>`;
+          return `<pre class="bg-slate-950 border border-slate-800 text-amber-300 p-2.5 rounded-xl font-mono text-xs overflow-x-auto my-1.5">${escapeHtml(line.replace(/```[a-z]*/g, ''))}</pre>`;
         }
-        return `<p class="text-slate-900 font-medium text-sm sm:text-base leading-snug py-1">${line}</p>`;
+        return `<p class="text-slate-100 font-medium text-sm sm:text-base leading-snug py-1">${line}</p>`;
       }).join('');
 
       qaAnswerContent.innerHTML = formattedHtml;
@@ -642,20 +650,20 @@
       qaHistoryList.innerHTML = '';
       pastTurns.forEach((item, idx) => {
         const card = document.createElement('div');
-        card.className = 'p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 hover:border-indigo-400 cursor-pointer transition';
+        card.className = 'p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl space-y-1 hover:border-indigo-500/60 cursor-pointer transition';
         card.innerHTML = `
-          <div class="flex items-center justify-between text-[10px] text-slate-400">
-            <span class="font-bold text-indigo-600">Turn #${pastTurns.length - idx}</span>
+          <div class="flex items-center justify-between text-[10px] text-slate-500">
+            <span class="font-bold text-indigo-400">Turn #${pastTurns.length - idx}</span>
             <span>${item.time || ''}</span>
           </div>
-          <p class="font-bold text-slate-800 text-xs truncate">"${escapeHtml(item.question)}"</p>
+          <p class="font-bold text-slate-200 text-xs truncate">"${escapeHtml(item.question)}"</p>
         `;
         card.onclick = () => {
           qaHistoryModal.classList.add('hidden');
           questionCardLabel.textContent = `Question #${pastTurns.length - idx}`;
           qaLiveSpeechText.innerHTML = `"${escapeHtml(item.question)}"`;
           renderFormattedQaAnswer(item.answer);
-          qaAnswerStatusBadge.className = 'text-[10px] sm:text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full';
+          qaAnswerStatusBadge.className = 'text-[10px] sm:text-xs bg-emerald-950/80 border border-emerald-800/60 text-emerald-300 font-bold px-2.5 py-0.5 rounded-full';
           qaAnswerStatusBadge.textContent = 'From History';
         };
         qaHistoryList.appendChild(card);
@@ -674,7 +682,7 @@
       if (currentAiAnswer) {
         navigator.clipboard.writeText(currentAiAnswer);
         const orig = qaCopyBtn.innerHTML;
-        qaCopyBtn.innerHTML = '<span class="text-emerald-600 font-bold">✓ Copied</span>';
+        qaCopyBtn.innerHTML = '<span class="text-emerald-400 font-bold">✓ Copied</span>';
         setTimeout(() => qaCopyBtn.innerHTML = orig, 1800);
       }
     });
@@ -692,7 +700,7 @@
 
       if (!currentParagraph || isLongPause || sentenceCountInParagraph >= 4) {
         currentParagraph = document.createElement('p');
-        currentParagraph.className = 'text-slate-800 text-sm sm:text-base md:text-lg leading-relaxed font-medium transition-colors';
+        currentParagraph.className = 'text-slate-300 text-sm sm:text-base md:text-lg leading-relaxed font-medium transition-colors';
         continuousTextFlow.appendChild(currentParagraph);
         sentenceCountInParagraph = 0;
       }
