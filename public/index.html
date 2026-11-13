@@ -38,6 +38,18 @@
     .glow-bg {
       animation: pulseGlow 6s ease-in-out infinite;
     }
+    @keyframes sentenceRollUp {
+      from { opacity: 0.2; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .k-sentence-roll {
+      animation: sentenceRollUp 240ms ease forwards;
+    }
+    /* Natural top fade mask for teleprompter */
+    .mask-top-fade {
+      mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%);
+    }
     /* Sleek custom scrollbars */
     ::-webkit-scrollbar {
       width: 6px;
@@ -166,7 +178,7 @@
         </div>
       </div>
 
-      <!-- Transcript Scroll Container (Auto-scrolls) -->
+      <!-- Transcript Scroll Container (Auto-scrolls for Recruiter / General Mode) -->
       <div id="transcriptContainer" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-2.5 sm:space-y-3">
         <!-- Placeholder / Empty State -->
         <div id="emptyTranscriptPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
@@ -176,6 +188,37 @@
           <p id="emptyPlaceholderText" class="text-xs sm:text-sm text-center max-w-md px-2 text-slate-300 font-medium leading-relaxed">
             Select <strong>"Start Listening"</strong> to begin intercepting interview questions in sub-150ms.
           </p>
+        </div>
+      </div>
+
+      <!-- OTTER CONTINUOUS TEXT STAGE (Used exclusively in Otter Practice Mode - Auto-scroll to top, bottom 3rd blank) -->
+      <div id="otterTeleprompterContainer" class="flex-1 min-h-0 w-full overflow-hidden flex flex-col items-center justify-between relative bg-slate-950 hidden">
+        <!-- CENTERED STAGE: Horizontally centered, responsive max-w-3xl on desktop, full width on mobile -->
+        <div class="w-full max-w-3xl h-full flex flex-col justify-between relative overflow-hidden bg-slate-900/40 border-x border-slate-800/60 shadow-2xl">
+          
+          <!-- UPPER 2/3: CONTINUOUS PARAGRAPHS & ACTIVE WORDS -->
+          <div class="flex-[2] min-h-0 w-full flex flex-col justify-end relative overflow-hidden">
+            <!-- TOP SCROLLABLE HISTORY (TOP FADE MASK) -->
+            <div id="otterHistoryScroll" class="flex-1 w-full overflow-y-auto px-4 sm:px-8 py-4 mask-top-fade overscroll-contain select-text">
+              <div id="otterHistoryFeed" class="min-h-full flex flex-col justify-end">
+                <div id="otterContinuousFlow" class="space-y-4 text-white text-base sm:text-lg md:text-xl leading-relaxed font-medium"></div>
+              </div>
+            </div>
+
+            <!-- EXACT VERTICAL 2ND HALF / CENTER LINE: ACTIVE WORDS -->
+            <div id="otterCenterArea" class="w-full px-4 sm:px-8 py-3 bg-slate-950/90 shrink-0 border-t border-b border-purple-500/30 backdrop-blur-sm z-10">
+              <p id="otterLivePrompt" class="text-lg sm:text-xl md:text-2xl font-bold text-white leading-snug break-words">
+                <span id="otterPromptText" class="text-slate-400 font-normal italic text-sm sm:text-base">Tap 'Start Speaking' and speak aloud... (Words roll up continuously)</span>
+                <span id="otterPromptCursor" class="inline-block w-2 sm:w-2.5 h-4 sm:h-5 bg-purple-500 ml-1.5 align-middle animate-pulse rounded-2xs"></span>
+              </p>
+            </div>
+          </div>
+
+          <!-- LOWER 1/3: EMPTY / BLANK (Bottom reading buffer) -->
+          <div class="flex-1 w-full bg-slate-950/40 pointer-events-none flex items-center justify-center border-t border-slate-800/40">
+            <span class="text-[11px] font-mono text-slate-500 tracking-wider uppercase">Auto-scrolling stage &bull; Bottom reading buffer</span>
+          </div>
+
         </div>
       </div>
 

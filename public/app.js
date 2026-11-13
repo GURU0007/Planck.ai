@@ -214,10 +214,17 @@ function applyModeConfiguration(mode) {
       paneTranscript.className = 'w-full h-full border-none flex flex-col bg-slate-950 overflow-hidden transition-all';
     }
 
-    // TEXT IN THE MIDDLE LIKE PARTICIPANT FOR OTTER (Centered container)
+    // Hide normal card container, show continuous Otter teleprompter stage!
     const transcriptContainer = document.getElementById('transcriptContainer');
-    if (transcriptContainer) {
-      transcriptContainer.className = 'flex-1 p-4 sm:p-8 overflow-y-auto space-y-4 max-w-2xl sm:max-w-3xl mx-auto w-full';
+    if (transcriptContainer) transcriptContainer.classList.add('hidden');
+    const otterTeleprompterContainer = document.getElementById('otterTeleprompterContainer');
+    if (otterTeleprompterContainer) otterTeleprompterContainer.classList.remove('hidden');
+    const interimBar = document.getElementById('interimBar');
+    if (interimBar) interimBar.classList.add('hidden');
+
+    const otterPromptText = document.getElementById('otterPromptText');
+    if (otterPromptText && !window._otterStreamer) {
+      window._otterStreamer = new KineticStreamer(otterPromptText);
     }
 
     // FORCE SOURCE TO MICROPHONE ONLY (TAB AUDIO DISABLED)
@@ -235,11 +242,14 @@ function applyModeConfiguration(mode) {
       badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-purple-600 text-white';
       badge.textContent = 'Otter Practice';
     }
-    if (text) text.textContent = 'Tab audio disabled. Microphone only — just click "Start Speaking" and speak. Text is centered on a single screen.';
-    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Otter Live Speech Transcription';
-    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Otter Practice Mode:</strong> Tab audio is disabled. Simply click <strong>"Start Speaking"</strong> with your microphone. Spoken words stream in real-time centered in the middle of the screen. Click <strong>"Share Live"</strong> above to mirror this session.';
+    if (text) text.textContent = 'Continuous flowing paragraphs centered in the middle. Auto-scrolls upwards as you speak.';
+    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Otter Live Continuous Transcription';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Otter Practice Mode:</strong> Simply click <strong>"Start Speaking"</strong> with your microphone. Words stream in real-time centered in the middle of the screen and roll up continuously. Click <strong>"Share Live"</strong> above to mirror this session.';
   } else if (mode === 'stealth') {
-    // Interview Copilot (Stealth): NO tab audio selector in this field
+    // Interview Copilot (Stealth): STRICTLY Intercepts Google Meet Tab Audio ONLY (Zero candidate mic)
+    currentSource = 'tab';
+    setSource('tab');
+
     if (paneAnswers) paneAnswers.classList.remove('hidden');
     const mobileBottomBar = document.getElementById('mobileBottomBar');
     if (mobileBottomBar) mobileBottomBar.classList.remove('hidden');
@@ -258,15 +268,21 @@ function applyModeConfiguration(mode) {
     if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
     if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
 
+    // Button specifically for Google Meet tab audio
+    if (!isRecording) {
+      toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-md shadow-emerald-600/25 transition text-xs sm:text-sm shrink-0';
+      toggleAudioBtn.innerHTML = '<i data-lucide="headphones" class="w-4 h-4 text-white"></i><span>Capture Google Meet Audio</span>';
+    }
+
     if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-emerald-950/60 border-emerald-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
     if (badge) {
       badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-600 text-white';
       badge.textContent = 'Interview Copilot';
     }
-    if (text) text.textContent = 'Only Interview Copilot controls active. 100% Invisible to screenshare & Tab Audio only (zero candidate mic noise).';
-    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Interviewer Voice (Browser Tab Only)';
+    if (text) text.textContent = 'Capturing Google Meet / Zoom tab audio only (your candidate microphone is 100% excluded).';
+    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Interviewer Voice (Google Meet Tab Only)';
     if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="shield-check" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400"></i> Interview Copilot Answers';
-    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Interview Copilot:</strong> 100% invisible on Zoom, Teams & Meet. Click <strong>"Start Listening"</strong> with your interview tab selected. Only the interviewer is captured (your voice is excluded).';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Interview Copilot:</strong> Click <strong>"Capture Google Meet Audio"</strong> and select your interview tab (ensure <em>"Also share tab audio"</em> is checked). Only the interviewer is captured; your own microphone is 100% excluded.';
   }
 
   if (window.lucide) lucide.createIcons();
@@ -399,6 +415,17 @@ function setupEventListeners() {
     transcriptContainer.innerHTML = '';
     transcriptContainer.appendChild(emptyPlaceholder);
     emptyPlaceholder.classList.remove('hidden');
+
+    // Also clear Otter continuous stage
+    const otterFlow = document.getElementById('otterContinuousFlow');
+    if (otterFlow) otterFlow.innerHTML = '';
+    const otterPrompt = document.getElementById('otterPromptText');
+    if (otterPrompt) otterPrompt.textContent = 'Tap \'Start Speaking\' and speak aloud... (Words roll up continuously)';
+    otterAccumulatedWords = [];
+    otterCurrentParagraph = null;
+    otterSentenceCount = 0;
+    otterInitialWaiting = true;
+    if (window._otterStreamer) window._otterStreamer.clear();
   });
 
   copyAnswerBtn.addEventListener('click', () => {
@@ -647,7 +674,11 @@ function triggerInstantAnswer() {
 // ==========================================
 function getShareUrl() {
   const origin = window.location.origin;
+  const isOtter = new URLSearchParams(window.location.search).get('mode') === 'practice';
   let url = `${origin}/live?room=${encodeURIComponent(hostRoomId)}`;
+  if (isOtter) {
+    url += '&mode=otter';
+  }
   if (hostRoomPin) {
     url += `&pin=${encodeURIComponent(hostRoomPin)}`;
   }
@@ -725,9 +756,12 @@ async function startRecording() {
     console.log('[Audio] Requesting user media...');
 
     // Guarantee that Otter mode strictly uses microphone only (tab audio disabled)
+    // Guarantee that Interview Copilot strictly uses Google Meet tab audio only (mic disabled)
     const currentMode = new URLSearchParams(window.location.search).get('mode');
     if (currentMode === 'practice') {
       currentSource = 'mic';
+    } else if (currentMode === 'stealth') {
+      currentSource = 'tab';
     }
 
     // 1. Capture audio based on user selection
@@ -894,6 +928,9 @@ function setupAudioProcessing() {
   if (currentMode === 'practice') {
     toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-500 text-white font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-md shadow-rose-600/25 transition active:scale-95 text-xs sm:text-sm shrink-0';
     toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-white"></i><span>Stop Speaking</span>';
+  } else if (currentMode === 'stealth') {
+    toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-500 text-white font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-md shadow-rose-600/25 transition active:scale-95 text-xs sm:text-sm shrink-0';
+    toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-white"></i><span>Stop Capturing Meet</span>';
   } else {
     toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
     if (currentSource === 'tab') {
@@ -946,6 +983,9 @@ function stopRecording() {
   if (currentMode === 'practice') {
     toggleAudioBtn.className = 'bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-md shadow-purple-600/25 transition text-xs sm:text-sm shrink-0';
     toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-4 h-4 text-white"></i><span>Start Speaking</span>';
+  } else if (currentMode === 'stealth') {
+    toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-md shadow-emerald-600/25 transition text-xs sm:text-sm shrink-0';
+    toggleAudioBtn.innerHTML = '<i data-lucide="headphones" class="w-4 h-4 text-white"></i><span>Capture Google Meet Audio</span>';
   } else {
     toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
     if (currentSource === 'tab') {
@@ -1044,11 +1084,201 @@ function handleWebSocketMessage(event) {
   }
 }
 
+// 60 FPS Kinetic Word Streamer for Otter Practice
+class KineticStreamer {
+  constructor(containerElement) {
+    this.container = containerElement;
+    this.displayedWords = [];
+    this.animationQueue = [];
+    this.rafId = null;
+    this.lastFrameTime = 0;
+    this.intervalMs = 45;
+  }
+
+  update(fullText) {
+    if (!fullText || !fullText.trim()) {
+      this.clear();
+      return;
+    }
+
+    const words = fullText.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return;
+
+    let commonLen = 0;
+    while (
+      commonLen < this.displayedWords.length &&
+      commonLen < words.length &&
+      this.displayedWords[commonLen] === words[commonLen]
+    ) {
+      commonLen++;
+    }
+
+    if (commonLen < this.displayedWords.length) {
+      this.pruneTo(commonLen);
+    }
+
+    const newWords = words.slice(commonLen);
+    if (newWords.length > 0) {
+      if (newWords.length >= 4) {
+        this.intervalMs = Math.max(20, Math.floor(90 / newWords.length));
+      } else {
+        this.intervalMs = 45;
+      }
+
+      for (let i = 0; i < newWords.length; i++) {
+        this.animationQueue.push(newWords[i]);
+      }
+
+      if (!this.rafId) {
+        this.lastFrameTime = performance.now() - this.intervalMs;
+        this.rafId = requestAnimationFrame(this.onAnimationFrame.bind(this));
+      }
+    }
+  }
+
+  onAnimationFrame(now) {
+    const elapsed = now - this.lastFrameTime;
+
+    if (elapsed >= this.intervalMs && this.animationQueue.length > 0) {
+      const word = this.animationQueue.shift();
+      this.appendWord(word);
+      this.displayedWords.push(word);
+      this.lastFrameTime = now;
+    }
+
+    if (this.animationQueue.length > 0) {
+      this.rafId = requestAnimationFrame(this.onAnimationFrame.bind(this));
+    } else {
+      this.rafId = null;
+    }
+  }
+
+  appendWord(word) {
+    const span = document.createElement('span');
+    span.className = 'k-word text-white font-bold';
+    span.textContent = word + ' ';
+    this.container.appendChild(span);
+  }
+
+  pruneTo(count) {
+    this.displayedWords = this.displayedWords.slice(0, count);
+    while (this.container.children.length > count) {
+      this.container.removeChild(this.container.lastChild);
+    }
+    this.animationQueue = [];
+  }
+
+  clear() {
+    this.displayedWords = [];
+    this.animationQueue = [];
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    this.container.innerHTML = '';
+  }
+
+  flush() {
+    while (this.animationQueue.length > 0) {
+      const word = this.animationQueue.shift();
+      this.appendWord(word);
+      this.displayedWords.push(word);
+    }
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+  }
+}
+
+// Otter Continuous Teleprompter State
+let otterAccumulatedWords = [];
+let otterCurrentParagraph = null;
+let otterSentenceCount = 0;
+let otterLastSentenceTime = 0;
+let otterInitialWaiting = true;
+
+function handleOtterLiveTranscript(text, isFinal) {
+  if (!text || !text.trim()) return;
+
+  const otterPromptText = document.getElementById('otterPromptText');
+  const otterHistoryScroll = document.getElementById('otterHistoryScroll');
+  const otterContinuousFlow = document.getElementById('otterContinuousFlow');
+
+  if (otterInitialWaiting) {
+    otterInitialWaiting = false;
+    if (otterPromptText) otterPromptText.innerHTML = '';
+  }
+
+  if (isFinal) {
+    otterAccumulatedWords.push(text.trim());
+  }
+
+  const activeDisplay = otterAccumulatedWords.length > 0
+    ? (isFinal ? otterAccumulatedWords.join(' ') : otterAccumulatedWords.join(' ') + ' ' + text.trim())
+    : text.trim();
+
+  // Stream live kinetic words in center line
+  if (window._otterStreamer) {
+    window._otterStreamer.update(activeDisplay);
+  } else if (otterPromptText) {
+    otterPromptText.textContent = activeDisplay;
+  }
+
+  const wordCount = activeDisplay.split(/\s+/).filter(Boolean).length;
+  const isSentenceEnd = activeDisplay.endsWith('.') || activeDisplay.endsWith('?') || activeDisplay.endsWith('!');
+
+  if (isFinal && (wordCount >= 10 || isSentenceEnd)) {
+    if (window._otterStreamer) window._otterStreamer.flush();
+    rollOtterPromptToHistory(activeDisplay);
+    otterAccumulatedWords = [];
+    if (window._otterStreamer) window._otterStreamer.clear();
+  }
+}
+
+function rollOtterPromptToHistory(completedText) {
+  if (!completedText || !completedText.trim()) return;
+
+  const otterContinuousFlow = document.getElementById('otterContinuousFlow');
+  const otterHistoryScroll = document.getElementById('otterHistoryScroll');
+  if (!otterContinuousFlow) return;
+
+  let sentence = completedText.trim();
+  if (!/[.?!]$/.test(sentence)) sentence += '.';
+  sentence = sentence.charAt(0).toUpperCase() + sentence.slice(1);
+
+  const now = Date.now();
+  const isLongPause = (now - otterLastSentenceTime > 5000);
+
+  if (!otterCurrentParagraph || isLongPause || otterSentenceCount >= 3) {
+    otterCurrentParagraph = document.createElement('p');
+    otterCurrentParagraph.className = 'text-white text-base sm:text-lg md:text-xl leading-relaxed font-medium transition-colors';
+    otterContinuousFlow.appendChild(otterCurrentParagraph);
+    otterSentenceCount = 0;
+  }
+  otterLastSentenceTime = now;
+
+  const span = document.createElement('span');
+  span.className = 'k-sentence-roll';
+  span.textContent = (otterCurrentParagraph.textContent ? ' ' : '') + sentence;
+  otterCurrentParagraph.appendChild(span);
+  otterSentenceCount++;
+
+  if (otterHistoryScroll) {
+    otterHistoryScroll.scrollTop = otterHistoryScroll.scrollHeight;
+  }
+}
+
 // Render live transcript directly in the chat feed with paragraph accumulation
 let currentTurnAccumulator = [];
 let lastBubbleTime = 0;
 
 function renderLiveTranscript(text, isFinal, speakerId) {
+  const currentMode = new URLSearchParams(window.location.search).get('mode');
+  if (currentMode === 'practice') {
+    handleOtterLiveTranscript(text, isFinal);
+    return;
+  }
   emptyPlaceholder.classList.add('hidden');
 
   let speakerLabel = 'Speaker';
