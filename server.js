@@ -213,19 +213,7 @@ wss.on('connection', (ws, req) => {
     groq = new Groq({ apiKey: groqApiKey });
   }
 
-  // Deepgram Nova-3 with 500ms pause threshold
-  const dgConnection = deepgram.listen.live({
-    model: 'nova-3',
-    language: 'en',
-    smart_format: true,
-    interim_results: true,
-    endpointing: 500, // 500ms initial pause detection
-    encoding: 'linear16',
-    sample_rate: clientSampleRate,
-    channels: 1,
-    diarize: true, // Enable AI speaker separation
-  });
-
+  let dgConnection = null;
   let isDgReady = false;
   let keepAliveTimer = null;
   
@@ -236,96 +224,137 @@ wss.on('connection', (ws, req) => {
   let lastAnswerGeneratedTime = 0;
   let clientGenerationMode = 'manual'; // Default to manual on-demand trigger!
 
-  dgConnection.on(LiveTranscriptionEvents.Open, () => {
-    isDgReady = true;
-    console.log(`[Deepgram Nova-3] Connected at ${clientSampleRate}Hz with 1-Second Silence Break`);
-    ws.send(JSON.stringify({ type: 'status', status: 'ready', message: 'Nova-3 Active (1s Silence Break)' }));
-
-    keepAliveTimer = setInterval(() => {
-      if (dgConnection && dgConnection.getReadyState() === 1) {
-        dgConnection.keepAlive();
-      }
-    }, 4000);
-  });
-
-  // Handle incoming transcripts
-  dgConnection.on(LiveTranscriptionEvents.Transcript, async (data) => {
-    let rawText = data.channel.alternatives[0]?.transcript || '';
-    if (!rawText.trim()) return;
-
-    // Apply software terminology auto-correction
-    const correctedText = autocorrectTechTerms(rawText);
-
-    const isFinal = data.is_final;
-    const isSpeechFinal = data.speech_final;
-
-    // While user is actively speaking, cancel any pending 1-second timer
-    if (turnDebounceTimer) {
-      clearTimeout(turnDebounceTimer);
-      turnDebounceTimer = null;
-    }
-
-    if (isFinal) {
-      currentTurnPhrases.push(correctedText);
-      console.log(`[Nova-3 Final] "${correctedText}" (speech_final: ${isSpeechFinal})`);
-    }
-
-    const words = data.channel.alternatives[0]?.words || [];
-    const speakerId = words.length > 0 && words[0].speaker !== undefined ? words[0].speaker : null;
-
-    const transcriptPayload = {
-      type: 'transcript',
-      text: correctedText,
-      isFinal: isFinal,
-      isSpeechFinal: isSpeechFinal,
-      speaker: speakerId,
-    };
-
-    // Immediately push live words to host browser
-    ws.send(JSON.stringify(transcriptPayload));
-
-    // Mirror to spectators in real-time (~100ms)
-    broadcastToSpectators(transcriptPayload);
-
-    // TURN COMPLETION EVALUATION:
-    if (isSpeechFinal) {
-      const fullTurnText = currentTurnPhrases.join(' ').trim() || correctedText;
-
-      // Only auto-trigger if the client enabled 'auto' mode
-      if (clientGenerationMode === 'auto') {
-        if (isIncompleteThought(fullTurnText)) {
-          console.log(`[Turn Hold] Incomplete thought detected ("${fullTurnText}"). Waiting...`);
-          return;
-        }
-
-        // 1000ms (1 Full Second) silence confirmation window for Auto mode
-        turnDebounceTimer = setTimeout(async () => {
-          const now = Date.now();
-          if (!isGenerating && fullTurnText.length >= 10 && (now - lastAnswerGeneratedTime > 2000)) {
-            console.log(`[Copilot Auto-Trigger] 1-Second Silence Confirmed: "${fullTurnText}"`);
-            currentTurnPhrases = [];
-            isGenerating = true;
-
-            await generateInstantAnswer(fullTurnText, ws, groq, roomId);
-            lastAnswerGeneratedTime = Date.now();
-            isGenerating = false;
-          }
-        }, 1000);
-      }
-    }
-  });
-
-  dgConnection.on(LiveTranscriptionEvents.Error, (err) => {
-    console.error('[Deepgram] Error:', err);
-    ws.send(JSON.stringify({ type: 'system_error', message: `Deepgram Error: ${err.message || err}` }));
-  });
-
-  dgConnection.on(LiveTranscriptionEvents.Close, () => {
-    console.log('[Deepgram] Connection closed');
+  function startDeepgramSession() {
+    if (ws.readyState !== WebSocket.OPEN) return;
     isDgReady = false;
     if (keepAliveTimer) clearInterval(keepAliveTimer);
-    if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
-  });
+
+    try {
+      dgConnection = deepgram.listen.live({
+        model: 'nova-3',
+        language: 'en',
+        smart_format: true,
+        interim_results: true,
+        endpointing: 500, // 500ms initial pause detection
+        encoding: 'linear16',
+        sample_rate: clientSampleRate,
+        channels: 1,
+        diarize: true, // Enable AI speaker separation
+      });
+
+      dgConnection.on(LiveTranscriptionEvents.Open, () => {
+        isDgReady = true;
+        console.log(`[Deepgram Nova-3] Connected at ${clientSampleRate}Hz with 1-Second Silence Break`);
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'status', status: 'ready', message: 'Nova-3 Active (1s Silence Break)' }));
+        }
+
+        keepAliveTimer = setInterval(() => {
+          if (dgConnection && dgConnection.getReadyState() === 1) {
+            dgConnection.keepAlive();
+          }
+        }, 3000);
+      });
+
+      dgConnection.on(LiveTranscriptionEvents.Transcript, async (data) => {
+        let rawText = data.channel.alternatives[0]?.transcript || '';
+        if (!rawText.trim()) return;
+
+        // Apply software terminology auto-correction
+        const correctedText = autocorrectTechTerms(rawText);
+
+        const isFinal = data.is_final;
+        const isSpeechFinal = data.speech_final;
+
+        // While user is actively speaking, cancel any pending 1-second timer
+        if (turnDebounceTimer) {
+          clearTimeout(turnDebounceTimer);
+          turnDebounceTimer = null;
+        }
+
+        if (isFinal) {
+          currentTurnPhrases.push(correctedText);
+          console.log(`[Nova-3 Final] "${correctedText}" (speech_final: ${isSpeechFinal})`);
+        }
+
+        const words = data.channel.alternatives[0]?.words || [];
+        const speakerId = words.length > 0 && words[0].speaker !== undefined ? words[0].speaker : null;
+
+        const transcriptPayload = {
+          type: 'transcript',
+          text: correctedText,
+          isFinal: isFinal,
+          isSpeechFinal: isSpeechFinal,
+          speaker: speakerId,
+        };
+
+        // Immediately push live words to host browser
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify(transcriptPayload));
+        }
+
+        // Mirror to spectators in real-time (~100ms)
+        broadcastToSpectators(transcriptPayload);
+
+        // TURN COMPLETION EVALUATION:
+        if (isSpeechFinal) {
+          const fullTurnText = currentTurnPhrases.join(' ').trim() || correctedText;
+
+          // Only auto-trigger if the client enabled 'auto' mode
+          if (clientGenerationMode === 'auto') {
+            if (isIncompleteThought(fullTurnText)) {
+              console.log(`[Turn Hold] Incomplete thought detected ("${fullTurnText}"). Waiting...`);
+              return;
+            }
+
+            // 1000ms (1 Full Second) silence confirmation window for Auto mode
+            turnDebounceTimer = setTimeout(async () => {
+              const now = Date.now();
+              if (!isGenerating && fullTurnText.length >= 10 && (now - lastAnswerGeneratedTime > 2000)) {
+                console.log(`[Copilot Auto-Trigger] 1-Second Silence Confirmed: "${fullTurnText}"`);
+                currentTurnPhrases = [];
+                isGenerating = true;
+
+                await generateInstantAnswer(fullTurnText, ws, groq, roomId);
+                lastAnswerGeneratedTime = Date.now();
+                isGenerating = false;
+              }
+            }, 1000);
+          }
+        }
+      });
+
+      dgConnection.on(LiveTranscriptionEvents.Error, (err) => {
+        console.error('[Deepgram] Error:', err.message || err);
+      });
+
+      dgConnection.on(LiveTranscriptionEvents.Close, () => {
+        console.log('[Deepgram] Connection closed');
+        isDgReady = false;
+        if (keepAliveTimer) clearInterval(keepAliveTimer);
+        if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
+
+        // Auto-reconnect Deepgram if host client is still actively connected!
+        if (ws.readyState === WebSocket.OPEN) {
+          console.log('[Deepgram] Host still connected. Auto-reconnecting Deepgram in 1s...');
+          setTimeout(startDeepgramSession, 1000);
+        }
+      });
+    } catch(err) {
+      console.error('[Deepgram] Session start error:', err);
+    }
+  }
+
+  startDeepgramSession();
+
+  // Server-side ping every 15s to keep proxy connection alive
+  const serverPingInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.ping();
+    } else {
+      clearInterval(serverPingInterval);
+    }
+  }, 15000);
 
   // Receive binary PCM audio chunks or control messages directly
   ws.on('message', (message, isBinary) => {
@@ -336,6 +365,9 @@ wss.on('connection', (ws, req) => {
     } else {
       try {
         const parsed = JSON.parse(message.toString());
+        if (parsed.type === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong' }));
+        }
         if (parsed.type === 'set_generation_mode') {
           clientGenerationMode = parsed.mode;
           console.log(`[Copilot Mode] Client set mode to: ${clientGenerationMode}`);
@@ -357,6 +389,7 @@ wss.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     console.log(`[WebSocket] Host disconnected from room: ${roomId}`);
+    clearInterval(serverPingInterval);
     if (room && room.hostWs === ws) {
       room.hostWs = null;
       broadcastToSpectators({ type: 'host_status', active: false });

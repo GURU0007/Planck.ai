@@ -10,6 +10,7 @@ let currentAnswer = '';
 let activeQuestionText = '';
 let lastTranscriptText = '';
 let qaList = [];
+let heartbeatTimer = null;
 
 // DOM Elements
 const toggleAudioBtn = document.getElementById('toggleAudioBtn');
@@ -783,24 +784,7 @@ async function startRecording() {
     console.log(`[AudioContext] Resumed at native rate: ${sampleRate}Hz`);
 
     // 3. Connect WebSocket with sampleRate and room parameters
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    let wsUrl = `${protocol}//${window.location.host}/ws?sampleRate=${sampleRate}&roomId=${encodeURIComponent(hostRoomId)}`;
-    if (hostRoomPin) {
-      wsUrl += `&pin=${encodeURIComponent(hostRoomPin)}`;
-    }
-    ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log('[WebSocket] Connected to backend');
-      setupAudioProcessing();
-    };
-
-    ws.onmessage = handleWebSocketMessage;
-    ws.onerror = (err) => console.error('[WebSocket] Error:', err);
-    ws.onclose = () => {
-      console.log('[WebSocket] Connection closed');
-      if (isRecording) stopRecording();
-    };
+    connectBackendWs(sampleRate);
 
   } catch (err) {
     console.error('Audio capture error:', err);
@@ -809,19 +793,77 @@ async function startRecording() {
   }
 }
 
+function connectBackendWs(sampleRate) {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  let wsUrl = `${protocol}//${window.location.host}/ws?sampleRate=${sampleRate}&roomId=${encodeURIComponent(hostRoomId)}`;
+  if (hostRoomPin) {
+    wsUrl += `&pin=${encodeURIComponent(hostRoomPin)}`;
+  }
+  
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+    try { ws.close(); } catch (e) {}
+  }
+
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    console.log('[WebSocket] Connected to backend');
+    if (!scriptProcessor) {
+      setupAudioProcessing();
+    }
+
+    // Ping every 10 seconds to keep connection permanently alive on proxies / Render
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = setInterval(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 10000);
+  };
+
+  ws.onmessage = handleWebSocketMessage;
+  ws.onerror = (err) => console.error('[WebSocket] Error:', err);
+
+  ws.onclose = () => {
+    console.log('[WebSocket] Connection closed');
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+
+    // If still recording, immediately auto-reconnect without turning off the record button!
+    if (isRecording) {
+      console.log('[WebSocket] Auto-reconnecting in 800ms...');
+      setTimeout(() => {
+        if (isRecording && (!ws || ws.readyState === WebSocket.CLOSED)) {
+          connectBackendWs(sampleRate);
+        }
+      }, 800);
+    }
+  };
+}
+
 function setupAudioProcessing() {
   const sourceNode = audioContext.createMediaStreamSource(audioStream);
 
   // Buffer size 1024 = ~21ms at 48kHz for lightning-fast streaming chunks
   scriptProcessor = audioContext.createScriptProcessor(1024, 1, 1);
 
-  // Mute gain node connected to destination to keep ScriptProcessor alive without echo
+  // Non-zero gain keeps Chromium audio render thread active and prevents GC
   const muteGain = audioContext.createGain();
-  muteGain.gain.value = 0;
+  muteGain.gain.value = 0.00001;
 
   sourceNode.connect(scriptProcessor);
   scriptProcessor.connect(muteGain);
   muteGain.connect(audioContext.destination);
+
+  // Bind to window to guarantee Chromium V8 never garbage-collects active audio nodes
+  window._planck_audio = { audioContext, audioStream, sourceNode, scriptProcessor, muteGain };
+
+  // Auto-resume if audioContext is suspended by browser power saving
+  audioContext.onstatechange = () => {
+    if (audioContext && audioContext.state === 'suspended' && isRecording) {
+      console.log('[AudioContext] Auto-resuming suspended audio context...');
+      audioContext.resume();
+    }
+  };
 
   let chunkCount = 0;
 
@@ -866,13 +908,21 @@ function setupAudioProcessing() {
   lucide.createIcons();
 
   audioStream.getTracks()[0].onended = () => {
-    stopRecording();
+    console.warn('[Audio] MediaStreamTrack ended');
+    if (currentSource === 'tab') {
+      stopRecording();
+    }
   };
 }
 
 function stopRecording() {
   isRecording = false;
   stopWhisper();
+
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+  }
 
   if (scriptProcessor) {
     scriptProcessor.disconnect();
@@ -885,6 +935,9 @@ function stopRecording() {
   if (audioStream) {
     audioStream.getTracks().forEach(t => t.stop());
     audioStream = null;
+  }
+  if (window._planck_audio) {
+    delete window._planck_audio;
   }
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.close();

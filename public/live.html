@@ -155,11 +155,18 @@
 
       specWs = new WebSocket(wsUrl);
 
+      let specHeartbeat = null;
       specWs.onopen = () => {
         console.log('[Spectator] Connected to room:', roomId);
         hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
         hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
         hostStatusText.textContent = 'Live Active';
+        if (specHeartbeat) clearInterval(specHeartbeat);
+        specHeartbeat = setInterval(() => {
+          if (specWs && specWs.readyState === WebSocket.OPEN) {
+            specWs.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 10000);
       };
 
       specWs.onmessage = (event) => {
@@ -172,6 +179,7 @@
       };
 
       specWs.onclose = () => {
+        if (specHeartbeat) clearInterval(specHeartbeat);
         hostStatusBadge.className = 'flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-500 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
         hostStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
         hostStatusText.textContent = 'Disconnected';
