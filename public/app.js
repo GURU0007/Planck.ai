@@ -67,6 +67,28 @@ let ttsEnabled = false;
 let ttsSpeed = 1.25; // Default 1.25x speed: brisk, natural, and efficient
 let currentUtterance = null;
 
+// Otter-Style Live Share Elements
+const openShareModalBtn = document.getElementById('openShareModalBtn');
+const closeShareModalBtn = document.getElementById('closeShareModalBtn');
+const shareModal = document.getElementById('shareModal');
+const shareLinkInput = document.getElementById('shareLinkInput');
+const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
+const copyShareLinkText = document.getElementById('copyShareLinkText');
+const sharePinInput = document.getElementById('sharePinInput');
+const savePinBtn = document.getElementById('savePinBtn');
+const pinSetStatus = document.getElementById('pinSetStatus');
+const shareSpectatorCountText = document.getElementById('shareSpectatorCountText');
+const spectatorBadgeCount = document.getElementById('spectatorBadgeCount');
+const openSpectatorNewTab = document.getElementById('openSpectatorNewTab');
+
+// Generate or retrieve persistent Session Room ID
+let hostRoomId = localStorage.getItem('planck_room_id');
+if (!hostRoomId) {
+  hostRoomId = 'session_' + Math.random().toString(36).substring(2, 8);
+  localStorage.setItem('planck_room_id', hostRoomId);
+}
+let hostRoomPin = localStorage.getItem('planck_room_pin') || '';
+
 function isMobile() {
   return window.innerWidth < 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
@@ -226,6 +248,45 @@ function setupEventListeners() {
   });
   closeContextBtn.addEventListener('click', () => contextModal.classList.add('hidden'));
   cancelContextBtn.addEventListener('click', () => contextModal.classList.add('hidden'));
+
+  // Live Share Modal Listeners
+  if (openShareModalBtn && shareModal) {
+    openShareModalBtn.addEventListener('click', () => {
+      updateShareModalInfo();
+      shareModal.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    });
+  }
+
+  if (closeShareModalBtn && shareModal) {
+    closeShareModalBtn.addEventListener('click', () => {
+      shareModal.classList.add('hidden');
+    });
+  }
+
+  if (copyShareLinkBtn) {
+    copyShareLinkBtn.addEventListener('click', copyShareLinkBtnAction);
+  }
+
+  if (savePinBtn) {
+    savePinBtn.addEventListener('click', savePinAction);
+  }
+
+  if (sharePinInput) {
+    sharePinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        savePinAction();
+      }
+    });
+  }
+
+  if (openSpectatorNewTab) {
+    openSpectatorNewTab.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.open(getShareUrl(), '_blank');
+    });
+  }
 
   // Drag and Drop & Resume File Upload handlers
   if (resumeDropZone && resumeFileInput) {
@@ -409,6 +470,71 @@ function triggerInstantAnswer() {
   if (instantAnswerBtnMobile) {
     instantAnswerBtnMobile.classList.add('scale-95', 'opacity-80');
     setTimeout(() => instantAnswerBtnMobile.classList.remove('scale-95', 'opacity-80'), 150);
+  }
+}
+
+// ==========================================
+// OTTER-STYLE LIVE SHARE SYSTEM
+// ==========================================
+function getShareUrl() {
+  const origin = window.location.origin;
+  let url = `${origin}/live?room=${encodeURIComponent(hostRoomId)}`;
+  if (hostRoomPin) {
+    url += `&pin=${encodeURIComponent(hostRoomPin)}`;
+  }
+  return url;
+}
+
+function updateShareModalInfo() {
+  if (shareLinkInput) {
+    shareLinkInput.value = getShareUrl();
+  }
+  if (sharePinInput) {
+    sharePinInput.value = hostRoomPin;
+  }
+}
+
+function copyShareLinkBtnAction() {
+  const url = getShareUrl();
+  navigator.clipboard.writeText(url).then(() => {
+    if (copyShareLinkText) copyShareLinkText.textContent = 'Copied!';
+    setTimeout(() => {
+      if (copyShareLinkText) copyShareLinkText.textContent = 'Copy';
+    }, 2000);
+  }).catch(() => {
+    if (shareLinkInput) {
+      shareLinkInput.select();
+      document.execCommand('copy');
+      if (copyShareLinkText) copyShareLinkText.textContent = 'Copied!';
+      setTimeout(() => {
+        if (copyShareLinkText) copyShareLinkText.textContent = 'Copy';
+      }, 2000);
+    }
+  });
+}
+
+function savePinAction() {
+  if (!sharePinInput) return;
+  const pin = sharePinInput.value.trim();
+  hostRoomPin = pin;
+  if (pin) {
+    localStorage.setItem('planck_room_pin', pin);
+  } else {
+    localStorage.removeItem('planck_room_pin');
+  }
+
+  // Update room pin on server if WebSocket is active
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'set_room_pin', pin: pin }));
+  }
+
+  updateShareModalInfo();
+  if (pinSetStatus) {
+    pinSetStatus.classList.remove('hidden');
+    pinSetStatus.textContent = pin ? '✓ PIN protection active' : '✓ PIN removed (Public)';
+    setTimeout(() => {
+      pinSetStatus.classList.add('hidden');
+    }, 2500);
   }
 }
 
@@ -613,9 +739,13 @@ async function startRecording() {
     const sampleRate = audioContext.sampleRate;
     console.log(`[AudioContext] Resumed at native rate: ${sampleRate}Hz`);
 
-    // 3. Connect WebSocket with sampleRate query param
+    // 3. Connect WebSocket with sampleRate and room parameters
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${protocol}//${window.location.host}/ws?sampleRate=${sampleRate}`);
+    let wsUrl = `${protocol}//${window.location.host}/ws?sampleRate=${sampleRate}&roomId=${encodeURIComponent(hostRoomId)}`;
+    if (hostRoomPin) {
+      wsUrl += `&pin=${encodeURIComponent(hostRoomPin)}`;
+    }
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       console.log('[WebSocket] Connected to backend');
@@ -728,6 +858,21 @@ let activeBubble = null;
 
 function handleWebSocketMessage(event) {
   const data = JSON.parse(event.data);
+
+  if (data.type === 'spectator_count') {
+    const count = data.count || 0;
+    if (spectatorBadgeCount) {
+      spectatorBadgeCount.textContent = count;
+      if (count > 0) {
+        spectatorBadgeCount.classList.remove('hidden');
+      } else {
+        spectatorBadgeCount.classList.add('hidden');
+      }
+    }
+    if (shareSpectatorCountText) {
+      shareSpectatorCountText.textContent = count === 1 ? '1 spectator watching live' : `${count} spectators watching live`;
+    }
+  }
 
   if (data.type === 'transcript') {
     renderLiveTranscript(data.text, data.isFinal, data.speaker);

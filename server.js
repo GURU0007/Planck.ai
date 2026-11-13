@@ -16,6 +16,15 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Otter-Style Live Session Rooms Network
+// Map: roomId -> { hostWs, spectators: Set(), history: [], currentQuestion: '', currentAnswer: '', pin: null }
+const liveRooms = new Map();
+
+// Spectator Teleprompter Route
+app.get('/live', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'live.html'));
+});
+
 // High-Priority Software & Tech Keywords
 const SOFTWARE_KEYWORDS = [
   'Spring Boot:5', 'Spring:4', 'Kubernetes:5', 'Docker:5', 'PostgreSQL:5', 'Postgres:4',
@@ -102,7 +111,90 @@ app.get('/api/status', (req, res) => {
 wss.on('connection', (ws, req) => {
   const parsedUrl = url.parse(req.url, true);
   const clientSampleRate = parseInt(parsedUrl.query.sampleRate, 10) || 48000;
-  console.log(`[WebSocket] Client connected (Sample Rate: ${clientSampleRate}Hz)`);
+  const isSpectator = parsedUrl.query.spectator === 'true';
+  const roomId = (parsedUrl.query.roomId || 'session_default').trim();
+  const providedPin = (parsedUrl.query.pin || '').trim();
+
+  // 1. HANDLE READ-ONLY SPECTATOR CONNECTIONS (Zero Deepgram/Groq cost)
+  if (isSpectator) {
+    console.log(`[Spectator WS] Connected to room: "${roomId}"`);
+    let room = liveRooms.get(roomId);
+    if (!room) {
+      room = { hostWs: null, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: null };
+      liveRooms.set(roomId, room);
+    }
+
+    // Verify PIN if room has one set
+    if (room.pin && room.pin !== providedPin) {
+      ws.send(JSON.stringify({ type: 'pin_required' }));
+      ws.close();
+      return;
+    }
+
+    room.spectators.add(ws);
+
+    // Send session init catch-up state
+    ws.send(JSON.stringify({
+      type: 'session_init',
+      roomId,
+      hostActive: Boolean(room.hostWs && room.hostWs.readyState === WebSocket.OPEN),
+      history: room.history,
+      currentQuestion: room.currentQuestion,
+      currentAnswer: room.currentAnswer,
+    }));
+
+    // Inform host of updated spectator count
+    if (room.hostWs && room.hostWs.readyState === WebSocket.OPEN) {
+      room.hostWs.send(JSON.stringify({
+        type: 'spectator_count',
+        count: room.spectators.size
+      }));
+    }
+
+    ws.on('close', () => {
+      room.spectators.delete(ws);
+      if (room.hostWs && room.hostWs.readyState === WebSocket.OPEN) {
+        room.hostWs.send(JSON.stringify({
+          type: 'spectator_count',
+          count: room.spectators.size
+        }));
+      }
+    });
+
+    return; // Spectators do not open Deepgram or Groq!
+  }
+
+  // 2. HANDLE HOST CONNECTION
+  console.log(`[WebSocket] Host connected (Sample Rate: ${clientSampleRate}Hz, Room: ${roomId})`);
+  let room = liveRooms.get(roomId);
+  if (!room) {
+    room = { hostWs: ws, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: providedPin || null };
+    liveRooms.set(roomId, room);
+  } else {
+    room.hostWs = ws;
+    if (providedPin) room.pin = providedPin;
+  }
+
+  // Helper function to broadcast to all spectators in this room
+  function broadcastToSpectators(obj) {
+    const r = liveRooms.get(roomId);
+    if (!r) return;
+    const msg = JSON.stringify(obj);
+    r.spectators.forEach(s => {
+      if (s.readyState === WebSocket.OPEN) {
+        s.send(msg);
+      }
+    });
+  }
+
+  // Notify spectators that host is active
+  broadcastToSpectators({ type: 'host_status', active: true });
+
+  // Notify host of current spectator count
+  ws.send(JSON.stringify({
+    type: 'spectator_count',
+    count: room.spectators.size
+  }));
 
   const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
   const groqApiKey = process.env.GROQ_API_KEY;
@@ -181,14 +273,19 @@ wss.on('connection', (ws, req) => {
     const words = data.channel.alternatives[0]?.words || [];
     const speakerId = words.length > 0 && words[0].speaker !== undefined ? words[0].speaker : null;
 
-    // Immediately push live words to browser
-    ws.send(JSON.stringify({
+    const transcriptPayload = {
       type: 'transcript',
       text: correctedText,
       isFinal: isFinal,
       isSpeechFinal: isSpeechFinal,
       speaker: speakerId,
-    }));
+    };
+
+    // Immediately push live words to host browser
+    ws.send(JSON.stringify(transcriptPayload));
+
+    // Mirror to spectators in real-time (~100ms)
+    broadcastToSpectators(transcriptPayload);
 
     // TURN COMPLETION EVALUATION:
     if (isSpeechFinal) {
@@ -209,7 +306,7 @@ wss.on('connection', (ws, req) => {
             currentTurnPhrases = [];
             isGenerating = true;
 
-            await generateInstantAnswer(fullTurnText, ws, groq);
+            await generateInstantAnswer(fullTurnText, ws, groq, roomId);
             lastAnswerGeneratedTime = Date.now();
             isGenerating = false;
           }
@@ -243,17 +340,27 @@ wss.on('connection', (ws, req) => {
           clientGenerationMode = parsed.mode;
           console.log(`[Copilot Mode] Client set mode to: ${clientGenerationMode}`);
         }
+        if (parsed.type === 'set_room_pin') {
+          if (room) {
+            room.pin = parsed.pin ? parsed.pin.trim() : null;
+            console.log(`[Room] PIN updated for room "${roomId}": ${room.pin ? 'PIN Protected' : 'Public'}`);
+          }
+        }
         if (parsed.type === 'trigger_manual_answer') {
           console.log(`[Copilot Instant Trigger] User pressed Generate button for: "${parsed.text}"`);
           if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
-          generateInstantAnswer(parsed.text, ws, groq);
+          generateInstantAnswer(parsed.text, ws, groq, roomId);
         }
       } catch (e) {}
     }
   });
 
   ws.on('close', () => {
-    console.log('[WebSocket] Client disconnected');
+    console.log(`[WebSocket] Host disconnected from room: ${roomId}`);
+    if (room && room.hostWs === ws) {
+      room.hostWs = null;
+      broadcastToSpectators({ type: 'host_status', active: false });
+    }
     if (keepAliveTimer) clearInterval(keepAliveTimer);
     if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
     if (dgConnection && dgConnection.getReadyState() === 1) {
@@ -273,21 +380,38 @@ function getOptimizedCandidateContext(rawContext) {
   return rawContext.trim();
 }
 
-// Ultra-fast streaming answer generator with automatic model fallback
-async function generateInstantAnswer(question, ws, groq) {
+// Ultra-fast streaming answer generator with automatic model fallback and live spectator mirroring
+async function generateInstantAnswer(question, ws, groq, roomId) {
+  const room = roomId ? liveRooms.get(roomId) : null;
+
+  function broadcast(obj) {
+    const s = JSON.stringify(obj);
+    if (ws && ws.readyState === WebSocket.OPEN) ws.send(s);
+    if (room) {
+      room.spectators.forEach(spec => {
+        if (spec.readyState === WebSocket.OPEN) spec.send(s);
+      });
+    }
+  }
+
   if (!groq) {
-    ws.send(JSON.stringify({
+    broadcast({
       type: 'answer_error',
       message: 'Groq API key is not configured in .env.'
-    }));
+    });
     return;
   }
 
-  ws.send(JSON.stringify({
+  if (room) {
+    room.currentQuestion = question;
+    room.currentAnswer = '';
+  }
+
+  broadcast({
     type: 'answer_start',
     question: question,
     timestamp: new Date().toISOString(),
-  }));
+  });
 
   const optimizedContext = getOptimizedCandidateContext(candidateContext);
   const messages = [
@@ -330,14 +454,21 @@ ${optimizedContext}`
 
       for await (const chunk of stream) {
         const token = chunk.choices[0]?.delta?.content || '';
-        if (token && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'answer_token', token }));
+        if (token) {
+          if (room) room.currentAnswer += token;
+          broadcast({ type: 'answer_token', token });
         }
       }
 
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'answer_done' }));
+      if (room) {
+        room.history.push({
+          question: room.currentQuestion,
+          answer: room.currentAnswer,
+          time: new Date().toLocaleTimeString()
+        });
       }
+
+      broadcast({ type: 'answer_done' });
       streamSuccess = true;
       break; // Successfully completed!
     } catch (err) {
@@ -352,12 +483,12 @@ ${optimizedContext}`
     }
   }
 
-  if (!streamSuccess && ws.readyState === WebSocket.OPEN) {
+  if (!streamSuccess) {
     let cleanMessage = lastError ? lastError.message : 'Unknown generation error';
     if (cleanMessage.includes('Rate limit') || cleanMessage.includes('429')) {
       cleanMessage = 'Groq rate limit cooldown active. Ready again in ~20 seconds.';
     }
-    ws.send(JSON.stringify({ type: 'answer_error', message: cleanMessage }));
+    broadcast({ type: 'answer_error', message: cleanMessage });
   }
 }
 

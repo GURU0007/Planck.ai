@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>planck.ai — Live Spectator</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
+
+  <!-- TOP SPECTATOR HEADER -->
+  <header class="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 flex items-center justify-between shrink-0 shadow-xs gap-2">
+    <div class="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
+      <div class="bg-gradient-to-br from-indigo-600 to-indigo-900 text-amber-300 p-1.5 sm:p-2 rounded-xl shadow-md flex items-center justify-center ring-2 ring-indigo-500/20">
+        <i data-lucide="zap" class="w-4 h-4 sm:w-5 sm:h-5 fill-amber-300 text-amber-300"></i>
+      </div>
+      <div>
+        <h1 class="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight leading-tight flex items-center gap-1.5">
+          planck<span class="text-indigo-600">.ai</span>
+          <span class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">Spectator</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Spectator Status Controls -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Live Room Badge -->
+      <div class="flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold shrink-0">
+        <span class="text-slate-400">Room:</span>
+        <span id="roomIdDisplay">...</span>
+      </div>
+
+      <!-- Host Connection Indicator -->
+      <div id="hostStatusBadge" class="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0">
+        <span id="hostStatusDot" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+        <span id="hostStatusText">Connecting...</span>
+      </div>
+
+      <!-- Optional Audio Whisper for Spectator -->
+      <button id="specWhisperToggle" class="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition" title="Listen to AI answers in your earbuds">
+        <i data-lucide="headphones" class="w-3.5 h-3.5 text-indigo-600"></i>
+        <span id="specWhisperText" class="hidden sm:inline">Audio: OFF</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- PIN REQUIRED OVERLAY (If room is password protected) -->
+  <div id="pinModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 p-6 space-y-4 mx-4">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-2xs">
+          <i data-lucide="lock" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-900">Protected Session</h3>
+        <p class="text-xs text-slate-500">The host has protected this live call with a PIN.</p>
+      </div>
+
+      <div>
+        <input type="text" id="pinInput" placeholder="Enter 4-digit PIN" class="w-full text-center text-lg font-mono tracking-widest bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500" maxlength="6" />
+        <p id="pinError" class="text-xs text-rose-600 mt-1.5 text-center hidden font-medium">Incorrect PIN. Please try again.</p>
+      </div>
+
+      <button id="submitPinBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl shadow-md transition">
+        Join Live Session
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE: 30% QUESTIONS / 70% TALKING POINTS -->
+  <main class="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- TOP SECTION (30% on mobile, 50% on desktop) -->
+    <section class="w-full h-[30vh] md:h-full md:w-1/2 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white shrink-0 md:shrink overflow-hidden shadow-xs">
+      <div class="px-3 sm:px-6 py-2 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+          <h2 class="text-xs sm:text-sm font-semibold text-slate-700">Live Questions & Speech Feed</h2>
+        </div>
+        <span class="text-[10px] text-slate-400 font-mono">Real-time mirror</span>
+      </div>
+
+      <!-- Transcript Scroll Feed -->
+      <div id="specTranscriptContainer" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-2.5">
+        <div id="specEmptyPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-8">
+          <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+            <i data-lucide="radio" class="w-5 h-5 text-indigo-500"></i>
+          </div>
+          <p class="text-xs text-center max-w-xs">Waiting for host to speak. Questions will stream and auto-scroll here in sub-150ms.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- BOTTOM SECTION (70% on mobile, 50% on desktop) -->
+    <section class="w-full flex-1 min-h-0 md:h-full md:w-1/2 flex flex-col bg-slate-50/50 overflow-hidden">
+      <div class="px-3 sm:px-6 py-2 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
+          <h2 class="text-xs sm:text-sm font-semibold text-slate-800">Live Instant AI</h2>
+          <span class="text-[10px] sm:text-xs bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded border border-emerald-200">Groq LPU (~120ms)</span>
+        </div>
+        <span id="specAnswerBadge" class="text-[10px] sm:text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">Standing by</span>
+      </div>
+
+      <div class="p-3 sm:p-6 flex-1 min-h-0 flex flex-col overflow-y-auto space-y-3">
+        <!-- Detected Question Card -->
+        <div id="specQuestionCard" class="hidden bg-white border border-indigo-100 rounded-xl p-3 sm:p-4 shadow-sm shrink-0">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1">
+              <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Detected Question
+            </span>
+            <span id="specQuestionTime" class="text-[10px] text-slate-400 font-mono">Just now</span>
+          </div>
+          <p id="specQuestionText" class="text-xs sm:text-sm font-semibold text-slate-900 leading-snug">
+            Waiting for question...
+          </p>
+        </div>
+
+        <!-- Generated Talking Points Box -->
+        <div class="flex-1 bg-white border border-slate-200 rounded-xl p-3.5 sm:p-5 shadow-sm flex flex-col min-h-[160px]">
+          <div class="flex items-center justify-between mb-2 border-b border-slate-100 pb-2 shrink-0">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500"></i> Live Talking Points
+            </span>
+            <button id="copySpecAnswerBtn" class="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1 transition">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
+            </button>
+          </div>
+
+          <div id="specAnswerContent" class="flex-1 overflow-y-auto font-sans text-xs sm:text-sm text-slate-700 leading-relaxed">
+            <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-6">
+              <i data-lucide="sparkles" class="w-6 h-6 sm:w-8 sm:h-8 text-slate-300"></i>
+              <p class="text-xs text-center max-w-xs">When the host's call triggers an answer, the talking points will mirror live here.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Spectator Client Logic
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room') || 'default';
+    let roomPin = urlParams.get('pin') || '';
+
+    let specWs = null;
+    let specCurrentAnswer = '';
+    let specWhisperEnabled = false;
+
+    // DOM Elements
+    const roomIdDisplay = document.getElementById('roomIdDisplay');
+    const hostStatusBadge = document.getElementById('hostStatusBadge');
+    const hostStatusDot = document.getElementById('hostStatusDot');
+    const hostStatusText = document.getElementById('hostStatusText');
+    const specTranscriptContainer = document.getElementById('specTranscriptContainer');
+    const specEmptyPlaceholder = document.getElementById('specEmptyPlaceholder');
+    const specQuestionCard = document.getElementById('specQuestionCard');
+    const specQuestionText = document.getElementById('specQuestionText');
+    const specQuestionTime = document.getElementById('specQuestionTime');
+    const specAnswerBadge = document.getElementById('specAnswerBadge');
+    const specAnswerContent = document.getElementById('specAnswerContent');
+    const copySpecAnswerBtn = document.getElementById('copySpecAnswerBtn');
+    const specWhisperToggle = document.getElementById('specWhisperToggle');
+    const specWhisperText = document.getElementById('specWhisperText');
+
+    const pinModal = document.getElementById('pinModal');
+    const pinInput = document.getElementById('pinInput');
+    const pinError = document.getElementById('pinError');
+    const submitPinBtn = document.getElementById('submitPinBtn');
+
+    roomIdDisplay.textContent = roomId;
+
+    function connectSpectator() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws?spectator=true&roomId=${encodeURIComponent(roomId)}&pin=${encodeURIComponent(roomPin)}`;
+
+      specWs = new WebSocket(wsUrl);
+
+      specWs.onopen = () => {
+        console.log('[Spectator] Connected to room:', roomId);
+        hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
+        hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+        hostStatusText.textContent = 'Live Mirror Active';
+      };
+
+      specWs.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleSpectatorMessage(data);
+        } catch (e) {
+          console.error('[Spectator] Parse error:', e);
+        }
+      };
+
+      specWs.onclose = () => {
+        hostStatusBadge.className = 'flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-500 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
+        hostStatusDot.className = 'w-2 h-2 rounded-full bg-slate-400';
+        hostStatusText.textContent = 'Disconnected';
+        setTimeout(connectSpectator, 3000); // Auto-reconnect
+      };
+    }
+
+    function handleSpectatorMessage(data) {
+      if (data.type === 'pin_required') {
+        pinModal.classList.remove('hidden');
+        pinError.classList.remove('hidden');
+        return;
+      }
+
+      if (data.type === 'session_init') {
+        pinModal.classList.add('hidden');
+        if (data.hostActive) {
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+          hostStatusText.textContent = 'Host Active';
+        } else {
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500';
+          hostStatusText.textContent = 'Host Standing By';
+        }
+        if (data.history && data.history.length > 0) {
+          specEmptyPlaceholder.classList.add('hidden');
+          data.history.forEach(turn => {
+            renderSpectatorTranscript(turn.question, true, 'Speaker');
+          });
+        }
+        if (data.currentQuestion) {
+          specQuestionCard.classList.remove('hidden');
+          specQuestionText.textContent = `"${data.currentQuestion}"`;
+        }
+        if (data.currentAnswer) {
+          renderSpectatorAnswer(data.currentAnswer);
+        }
+      }
+
+      if (data.type === 'transcript') {
+        specEmptyPlaceholder.classList.add('hidden');
+        renderSpectatorTranscript(data.text, data.isFinal, data.speaker !== null ? `Speaker ${data.speaker + 1}` : 'Interviewer');
+      }
+
+      if (data.type === 'answer_start') {
+        specCurrentAnswer = '';
+        specQuestionCard.classList.remove('hidden');
+        specQuestionText.textContent = `"${data.question}"`;
+        specQuestionTime.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        specAnswerBadge.className = 'text-[11px] bg-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 rounded-full animate-pulse';
+        specAnswerBadge.textContent = '⚡ Streaming Answer (~120ms)...';
+        specAnswerContent.innerHTML = '';
+      }
+
+      if (data.type === 'answer_token') {
+        specCurrentAnswer += data.token;
+        renderSpectatorAnswer(specCurrentAnswer);
+        specAnswerContent.scrollTop = specAnswerContent.scrollHeight;
+      }
+
+      if (data.type === 'answer_done') {
+        specAnswerBadge.className = 'text-[11px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full';
+        specAnswerBadge.textContent = '✓ Complete';
+        if (specWhisperEnabled && specCurrentAnswer) {
+          speakSpectatorWhisper(specCurrentAnswer);
+        }
+      }
+
+      if (data.type === 'host_status') {
+        if (data.active) {
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping';
+          hostStatusText.textContent = 'Host Active';
+        } else {
+          hostStatusBadge.className = 'flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0';
+          hostStatusDot.className = 'w-2 h-2 rounded-full bg-amber-500';
+          hostStatusText.textContent = 'Host Standing By';
+        }
+      }
+    }
+
+    let activeSpecBubble = null;
+    let specTurnAccumulator = [];
+    let lastSpecBubbleTime = 0;
+
+    function renderSpectatorTranscript(text, isFinal, speakerLabel) {
+      const now = Date.now();
+      if (now - lastSpecBubbleTime > 3000 && activeSpecBubble) {
+        activeSpecBubble = null;
+        specTurnAccumulator = [];
+      }
+      lastSpecBubbleTime = now;
+
+      if (!activeSpecBubble) {
+        activeSpecBubble = document.createElement('div');
+        activeSpecBubble.className = 'bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-1 transition';
+        activeSpecBubble.innerHTML = `
+          <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <span class="font-bold text-indigo-600 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+              ${escapeHtml(speakerLabel)}
+            </span>
+            <span class="font-mono">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-800 leading-relaxed spec-bubble-text"></p>
+        `;
+        specTranscriptContainer.appendChild(activeSpecBubble);
+        specTurnAccumulator = [];
+      }
+
+      if (isFinal && text.trim()) {
+        specTurnAccumulator.push(text.trim());
+      }
+
+      const fullText = specTurnAccumulator.length > 0
+        ? (isFinal ? specTurnAccumulator.join(' ') : specTurnAccumulator.join(' ') + ' ' + text)
+        : text;
+
+      const p = activeSpecBubble.querySelector('.spec-bubble-text');
+      p.textContent = fullText;
+      specTranscriptContainer.scrollTop = specTranscriptContainer.scrollHeight;
+
+      if (isFinal) {
+        const dot = activeSpecBubble.querySelector('.animate-ping');
+        if (dot) dot.classList.remove('animate-ping');
+        const trimmed = text.trim();
+        const wordCount = fullText.trim().split(/\s+/).filter(Boolean).length;
+        if (trimmed.endsWith('?') || wordCount >= 30) {
+          activeSpecBubble = null;
+          specTurnAccumulator = [];
+        }
+      }
+    }
+
+    function renderSpectatorAnswer(rawText) {
+      const cleanLines = rawText.split('\n').filter(l => l.trim().length > 0);
+      let html = '<div class="space-y-2">';
+      cleanLines.forEach(line => {
+        let clean = line.replace(/^\s*[-*•]\s*/, '').replace(/^\s*\d+\.\s*/, '').trim();
+        html += `
+          <div class="flex items-start gap-2 bg-indigo-50/50 p-2 rounded-lg border border-indigo-100/60">
+            <span class="text-indigo-600 font-bold shrink-0 mt-0.5">⚡</span>
+            <span class="text-xs sm:text-sm text-slate-800 leading-snug">${escapeHtml(clean)}</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+      specAnswerContent.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // PIN Submission
+    submitPinBtn.addEventListener('click', () => {
+      const val = pinInput.value.trim();
+      if (val) {
+        roomPin = val;
+        pinModal.classList.add('hidden');
+        if (specWs) specWs.close();
+        connectSpectator();
+      }
+    });
+
+    // Copy Answer
+    copySpecAnswerBtn.addEventListener('click', () => {
+      if (specCurrentAnswer) {
+        navigator.clipboard.writeText(specCurrentAnswer);
+        copySpecAnswerBtn.innerHTML = '<span class="text-emerald-600 font-bold">✓ Copied!</span>';
+        setTimeout(() => {
+          copySpecAnswerBtn.innerHTML = '<i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy';
+          lucide.createIcons();
+        }, 1500);
+      }
+    });
+
+    // Spectator Whisper Toggle
+    specWhisperToggle.addEventListener('click', () => {
+      specWhisperEnabled = !specWhisperEnabled;
+      if (specWhisperEnabled) {
+        specWhisperToggle.className = 'border border-emerald-300 bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
+        specWhisperText.textContent = 'Audio: ON';
+        // Prime synthesis on mobile
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.speak(new SpeechSynthesisUtterance(' '));
+        }
+      } else {
+        specWhisperToggle.className = 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
+        specWhisperText.textContent = 'Audio: OFF';
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      }
+    });
+
+    function speakSpectatorWhisper(text) {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const clean = text.replace(/[*_#`~>]/g, ' ').replace(/\s+/g, ' ').trim();
+      const utt = new SpeechSynthesisUtterance(clean);
+      utt.rate = 1.25;
+      window.speechSynthesis.speak(utt);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      connectSpectator();
+    });
+  </script>
+</body>
+</html>
