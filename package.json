@@ -4,7 +4,8 @@
   "description": "Real-time Google Voice Call Copilot with Deepgram STT and Groq LLM",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "stealth": "npx electron stealth-overlay.js"
   },
   "dependencies": {
     "@deepgram/sdk": "^3.9.0",
