@@ -312,7 +312,11 @@
 
       const p = activeSpecBubble.querySelector('.spec-bubble-text');
       if (p) {
-        p.textContent = fullText;
+        if (!isFinal) {
+          p.innerHTML = `${escapeHtml(fullText)}<span class="inline-block w-1.5 h-3 bg-indigo-500 ml-1 animate-pulse"></span>`;
+        } else {
+          p.textContent = fullText;
+        }
       }
 
       if (isFinal) {

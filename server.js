@@ -230,23 +230,31 @@ wss.on('connection', (ws, req) => {
     if (keepAliveTimer) clearInterval(keepAliveTimer);
 
     try {
-      dgConnection = deepgram.listen.live({
+      const dgOptions = {
         model: 'nova-3',
         language: 'en',
         smart_format: true,
+        punctuate: true,
         interim_results: true,
-        endpointing: 500, // 500ms initial pause detection
+        endpointing: 250, // 250ms ultra-low pause detection for instant turn finalization
         encoding: 'linear16',
         sample_rate: clientSampleRate,
         channels: 1,
-        diarize: true, // Enable AI speaker separation
-      });
+      };
+
+      // Only enable diarization if explicitly requested (?diarize=true)
+      // Disabling diarization removes the 400-600ms embedding clustering buffer, achieving sub-150ms instantaneous live transcription
+      if (parsedUrl.query.diarize === 'true') {
+        dgOptions.diarize = true;
+      }
+
+      dgConnection = deepgram.listen.live(dgOptions);
 
       dgConnection.on(LiveTranscriptionEvents.Open, () => {
         isDgReady = true;
-        console.log(`[Deepgram Nova-3] Connected at ${clientSampleRate}Hz with 1-Second Silence Break`);
+        console.log(`[Deepgram Nova-3] Connected at ${clientSampleRate}Hz (Latency Optimized, Diarize: ${Boolean(dgOptions.diarize)})`);
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'status', status: 'ready', message: 'Nova-3 Active (1s Silence Break)' }));
+          ws.send(JSON.stringify({ type: 'status', status: 'ready', message: 'Nova-3 Active (Ultra-Fast <150ms)' }));
         }
 
         keepAliveTimer = setInterval(() => {

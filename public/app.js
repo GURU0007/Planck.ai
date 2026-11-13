@@ -1079,11 +1079,24 @@ function renderLiveTranscript(text, isFinal, speakerId) {
   if (!activeBubble) {
     activeBubble = document.createElement('div');
     activeBubble.className = 'bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 hover:bg-slate-100/60 transition';
+    activeBubble.innerHTML = `
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+          <span class="bubble-dot w-1.5 h-1.5 rounded-full ${badgeColor} animate-ping"></span>
+          <span class="bubble-speaker">${escapeHtml(speakerLabel)}...</span>
+        </span>
+        <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
+      </div>
+      <p class="bubble-p text-sm text-slate-600 italic leading-relaxed"></p>
+      <div class="bubble-actions pt-1 flex justify-end hidden">
+        <button class="manual-answer-btn text-[11px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md font-medium flex items-center gap-1 transition">
+          ⚡ Answer this question
+        </button>
+      </div>
+    `;
     transcriptContainer.appendChild(activeBubble);
     currentTurnAccumulator = [];
   }
-
-  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   if (isFinal) {
     if (text.trim()) {
@@ -1098,42 +1111,36 @@ function renderLiveTranscript(text, isFinal, speakerId) {
 
   lastTranscriptText = fullText;
 
+  const bubbleP = activeBubble.querySelector('.bubble-p');
+  const bubbleDot = activeBubble.querySelector('.bubble-dot');
+  const bubbleSpeaker = activeBubble.querySelector('.bubble-speaker');
+  const bubbleActions = activeBubble.querySelector('.bubble-actions');
+
   if (!isFinal) {
-    // Live in-progress speech (gray italic typing indicator)
-    activeBubble.innerHTML = `
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full ${badgeColor} animate-ping"></span> ${speakerLabel}...
-        </span>
-        <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
-      </div>
-      <p class="text-sm text-slate-600 italic leading-relaxed">${escapeHtml(fullText)}<span class="inline-block w-1.5 h-3 bg-indigo-500 ml-1 animate-pulse"></span></p>
-    `;
+    // Live in-progress speech (instant word prompt with pulsing cursor)
+    if (bubbleP) {
+      bubbleP.innerHTML = `${escapeHtml(fullText)}<span class="inline-block w-1.5 h-3 bg-indigo-500 ml-1 animate-pulse"></span>`;
+    }
   } else {
     // Solid text containing this finalized question
-    activeBubble.innerHTML = `
-      <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-          <span class="w-1.5 h-1.5 rounded-full ${badgeColor}"></span> ${speakerLabel}
-        </span>
-        <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
-      </div>
-      <p class="text-sm text-slate-800 leading-relaxed font-medium">${escapeHtml(fullText)}</p>
-      <div class="pt-1 flex justify-end">
-        <button class="manual-answer-btn text-[11px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md font-medium flex items-center gap-1 transition">
-          ⚡ Answer this question
-        </button>
-      </div>
-    `;
-
-    const btn = activeBubble.querySelector('.manual-answer-btn');
-    const capturedFullQuestion = fullText;
-    btn.addEventListener('click', () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        console.log('[Manual Trigger] Sending question:', capturedFullQuestion);
-        ws.send(JSON.stringify({ type: 'trigger_manual_answer', text: capturedFullQuestion }));
-      }
-    });
+    if (bubbleP) {
+      bubbleP.textContent = fullText;
+      bubbleP.className = 'bubble-p text-sm text-slate-800 leading-relaxed font-medium';
+    }
+    if (bubbleDot) bubbleDot.classList.remove('animate-ping');
+    if (bubbleSpeaker) bubbleSpeaker.textContent = speakerLabel;
+    
+    if (bubbleActions) {
+      bubbleActions.classList.remove('hidden');
+      const btn = bubbleActions.querySelector('.manual-answer-btn');
+      const capturedFullQuestion = fullText;
+      btn.onclick = () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          console.log('[Manual Trigger] Sending question:', capturedFullQuestion);
+          ws.send(JSON.stringify({ type: 'trigger_manual_answer', text: capturedFullQuestion }));
+        }
+      };
+    }
 
     // CUT OFF: Keep complete questions together (up to 30-35 words max)
     const wordCount = fullText.trim().split(/\s+/).filter(Boolean).length;
