@@ -90,11 +90,13 @@ window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const modeParam = urlParams.get('mode');
 
-  let initialSource = 'tab'; // Default to original Google Voice / Call testing mode on desktop!
-  if (modeParam === 'practice' || modeParam === 'twoway') {
+  let initialSource = 'mic';
+  if (modeParam === 'recruiter') {
+    initialSource = 'tab'; // Only recruiter helper defaults to tab audio!
+  } else if (modeParam === 'practice') {
     initialSource = 'mic';
   } else if (modeParam === 'stealth') {
-    initialSource = 'tab';
+    initialSource = 'mic';
   } else {
     try {
       const saved = localStorage.getItem('planck_audio_source');
@@ -145,25 +147,45 @@ function applyModeConfiguration(mode) {
 
   // FIELD-SPECIFIC STRICT FILTERING: Hide unrelated buttons & features
   if (mode === 'recruiter') {
-    // Recruiter Call Helper: Only resume/context & call audio
+    // Recruiter Call Helper: ONLY field that has Tab Audio!
     if (paneAnswers) paneAnswers.classList.remove('hidden');
     const mobileBottomBar = document.getElementById('mobileBottomBar');
     if (mobileBottomBar) mobileBottomBar.classList.remove('hidden');
-    if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
+
+    // SHOW TAB AUDIO SELECTOR IN RECRUITER HELPER ONLY
+    if (audioSourceSelector) {
+      audioSourceSelector.style.setProperty('display', 'flex', 'important');
+      audioSourceSelector.classList.remove('hidden');
+      audioSourceSelector.classList.add('flex');
+    }
+    if (sourceTabBtn) {
+      sourceTabBtn.disabled = false;
+      sourceTabBtn.style.setProperty('display', '', 'important');
+      sourceTabBtn.classList.remove('hidden');
+    }
+    if (sourceMicBtn) {
+      sourceMicBtn.disabled = false;
+      sourceMicBtn.style.setProperty('display', '', 'important');
+      sourceMicBtn.classList.remove('hidden');
+    }
+
     if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
     if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
     if (openShareModalBtn) openShareModalBtn.classList.add('hidden');
     if (openContextBtn) openContextBtn.classList.remove('hidden');
+
+    // Default to Tab Audio for Recruiter screening calls
+    setSource('tab');
 
     if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-indigo-950/60 border-indigo-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
     if (badge) {
       badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-indigo-600 text-white';
       badge.textContent = 'Recruiter Helper';
     }
-    if (text) text.textContent = 'Only Recruiter controls active. Focused on behavioral STAR answers, resume alignment, and compensation guidance.';
+    if (text) text.textContent = 'Tab Audio enabled: Intercept recruiter call audio from Google Meet/Zoom/Phone tab (or switch to Mic). Instant STAR talking points stream in ~120ms.';
     if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Recruiter Questions & Call Audio';
     if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400"></i> STAR Talking Points (Situation • Task • Action • Result)';
-    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Recruiter Call Helper:</strong> Ready for recruiter screening. Upload your resume or job description via <strong>"Upload Resume"</strong>. As the recruiter speaks, instant STAR talking points stream in ~120ms.';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Recruiter Call Helper:</strong> Click <strong>"Start Listening"</strong> with <strong>Tab Audio</strong> (or switch to Microphone). Upload your resume or JD via <strong>"Upload Resume"</strong>. Instant STAR answers stream in ~120ms.';
   } else if (mode === 'practice') {
     // Otter Practice: Only live transcription & live spectator sharing
     // HIDE SECOND HALF ANSWER GENERATION SCREEN COMPLETELY! ONLY ONE SCREEN FOR HOST!
@@ -217,15 +239,24 @@ function applyModeConfiguration(mode) {
     if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Otter Live Speech Transcription';
     if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Otter Practice Mode:</strong> Tab audio is disabled. Simply click <strong>"Start Speaking"</strong> with your microphone. Spoken words stream in real-time centered in the middle of the screen. Click <strong>"Share Live"</strong> above to mirror this session.';
   } else if (mode === 'stealth') {
-    // Interview Copilot (Stealth): Only tab interceptor, launcher .bat & standalone HUD
+    // Interview Copilot (Stealth): NO tab audio selector in this field
     if (paneAnswers) paneAnswers.classList.remove('hidden');
     const mobileBottomBar = document.getElementById('mobileBottomBar');
     if (mobileBottomBar) mobileBottomBar.classList.remove('hidden');
-    if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
+    if (audioSourceSelector) {
+      audioSourceSelector.style.setProperty('display', 'none', 'important');
+      audioSourceSelector.classList.add('hidden');
+      audioSourceSelector.classList.remove('flex');
+    }
+    if (sourceTabBtn) {
+      sourceTabBtn.disabled = true;
+      sourceTabBtn.style.setProperty('display', 'none', 'important');
+      sourceTabBtn.classList.add('hidden');
+    }
     if (openShareModalBtn) openShareModalBtn.classList.add('hidden');
     if (openContextBtn) openContextBtn.classList.add('hidden');
-    if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.remove('hidden');
-    if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.remove('hidden');
+    if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
+    if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
 
     if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-emerald-950/60 border-emerald-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
     if (badge) {
