@@ -152,7 +152,7 @@
   <script>
     // Spectator Client Logic
     const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get('room') || 'default';
+    const roomId = urlParams.get('room') || 'main_room';
     let roomPin = urlParams.get('pin') || '';
 
     let specWs = null;

@@ -82,12 +82,9 @@ const shareSpectatorCountText = document.getElementById('shareSpectatorCountText
 const spectatorBadgeCount = document.getElementById('spectatorBadgeCount');
 const openSpectatorNewTab = document.getElementById('openSpectatorNewTab');
 
-// Generate or retrieve persistent Session Room ID
-let hostRoomId = localStorage.getItem('planck_room_id');
-if (!hostRoomId) {
-  hostRoomId = 'session_' + Math.random().toString(36).substring(2, 8);
-  localStorage.setItem('planck_room_id', hostRoomId);
-}
+// Persistent Session Room ID (Defaults to main_room so stealth overlay connects automatically)
+let hostRoomId = localStorage.getItem('planck_room_id') || 'main_room';
+localStorage.setItem('planck_room_id', hostRoomId);
 let hostRoomPin = localStorage.getItem('planck_room_pin') || '';
 
 function isMobile() {

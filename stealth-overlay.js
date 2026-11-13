@@ -41,7 +41,7 @@ function createStealthWindow() {
   mainWindow.setContentProtection(true);
 
   // URL to load: defaults to local server or Render live teleprompter
-  const targetUrl = process.env.PLANCK_URL || 'https://planck-ai.onrender.com/live';
+  const targetUrl = process.env.PLANCK_URL || 'https://planck-ai.onrender.com/live?room=main_room';
   console.log('[Stealth Overlay] Loading:', targetUrl);
   mainWindow.loadURL(targetUrl);
 
