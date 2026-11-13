@@ -171,10 +171,15 @@ function applyModeConfiguration(mode) {
     const mobileBottomBar = document.getElementById('mobileBottomBar');
     if (mobileBottomBar) mobileBottomBar.classList.add('hidden');
 
-    // STRICTLY DISABLE & HIDE TAB AUDIO FOR OTTER
-    if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
+    // STRICTLY DISABLE & REMOVE TAB AUDIO FOR OTTER
+    if (audioSourceSelector) {
+      audioSourceSelector.style.setProperty('display', 'none', 'important');
+      audioSourceSelector.classList.add('hidden');
+      audioSourceSelector.classList.remove('md:flex', 'flex');
+    }
     if (sourceTabBtn) {
       sourceTabBtn.disabled = true;
+      sourceTabBtn.style.setProperty('display', 'none', 'important');
       sourceTabBtn.classList.add('hidden');
     }
     if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
@@ -310,15 +315,19 @@ async function loadContext() {
 function setupEventListeners() {
   toggleAudioBtn.addEventListener('click', toggleRecording);
 
-  sourceTabBtn.addEventListener('click', () => {
-    if (isRecording) stopRecording();
-    setSource('tab');
-  });
+  if (sourceTabBtn) {
+    sourceTabBtn.addEventListener('click', () => {
+      if (isRecording) stopRecording();
+      setSource('tab');
+    });
+  }
 
-  sourceMicBtn.addEventListener('click', () => {
-    if (isRecording) stopRecording();
-    setSource('mic');
-  });
+  if (sourceMicBtn) {
+    sourceMicBtn.addEventListener('click', () => {
+      if (isRecording) stopRecording();
+      setSource('mic');
+    });
+  }
 
   // Instant Trigger Button & Keyboard Shortcut
   instantAnswerBtn.addEventListener('click', triggerInstantAnswer);
@@ -1037,16 +1046,16 @@ function renderLiveTranscript(text, isFinal, speakerId) {
 
   if (!activeBubble) {
     activeBubble = document.createElement('div');
-    activeBubble.className = 'bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 hover:border-slate-700 transition shadow-xs';
+    activeBubble.className = 'bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 hover:border-slate-700 transition shadow-xs text-white';
     activeBubble.innerHTML = `
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+        <span class="text-xs font-bold text-slate-100 flex items-center gap-1.5">
           <span class="bubble-dot w-1.5 h-1.5 rounded-full ${badgeColor} animate-ping"></span>
           <span class="bubble-speaker">${escapeHtml(speakerLabel)}...</span>
         </span>
         <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
       </div>
-      <p class="bubble-p text-sm text-slate-300 italic leading-relaxed"></p>
+      <p class="bubble-p text-sm sm:text-base text-white font-medium leading-relaxed"></p>
       <div class="bubble-actions pt-1 flex justify-end hidden">
         <button class="manual-answer-btn text-[11px] text-indigo-300 hover:text-white bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 transition">
           ⚡ Answer this question
@@ -1084,7 +1093,7 @@ function renderLiveTranscript(text, isFinal, speakerId) {
       let html = '';
       for (let i = 0; i < words.length; i++) {
         const isBrandNew = i >= existingSpans.length;
-        html += `<span class="bubble-word ${isBrandNew ? 'k-word' : ''}">${escapeHtml(words[i])} </span>`;
+        html += `<span class="bubble-word ${isBrandNew ? 'k-word' : ''} text-white font-medium">${escapeHtml(words[i])} </span>`;
       }
       html += `<span class="inline-block w-1.5 h-3 bg-indigo-500 ml-1 animate-pulse rounded-2xs align-middle"></span>`;
       bubbleP.innerHTML = html;
@@ -1093,7 +1102,7 @@ function renderLiveTranscript(text, isFinal, speakerId) {
     // Solid text containing this finalized question
     if (bubbleP) {
       bubbleP.textContent = fullText;
-      bubbleP.className = 'bubble-p text-sm text-slate-800 leading-relaxed font-medium';
+      bubbleP.className = 'bubble-p text-sm sm:text-base text-white leading-relaxed font-semibold';
     }
     if (bubbleDot) bubbleDot.classList.remove('animate-ping');
     if (bubbleSpeaker) bubbleSpeaker.textContent = speakerLabel;
@@ -1130,7 +1139,7 @@ function renderFormattedAnswer(text) {
   }
 
   // 1. Convert markdown bold **word** to clean bold HTML tags
-  let cleaned = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-900">$1</strong>');
+  let cleaned = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
   cleaned = cleaned.replace(/\*(.*?)\*/g, '$1');
 
   // 2. Normalize whitespace and newlines (prevent multiple blank rows)
@@ -1144,9 +1153,9 @@ function renderFormattedAnswer(text) {
     const numMatch = line.match(/^(\d+)[.)]\s*(.*)/);
     if (numMatch) {
       return `
-        <div class="flex items-start gap-2.5 py-1.5 border-b border-slate-100/70 last:border-0">
-          <span class="shrink-0 w-5 h-5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center border border-indigo-200/80 mt-0.5">${numMatch[1]}</span>
-          <div class="flex-1 text-slate-800 text-[13.5px] leading-snug">${numMatch[2]}</div>
+        <div class="flex items-start gap-2.5 py-1.5 border-b border-slate-850/80 last:border-0">
+          <span class="shrink-0 w-5 h-5 rounded-md bg-indigo-950 text-indigo-300 font-bold text-xs flex items-center justify-center border border-indigo-800/80 mt-0.5">${numMatch[1]}</span>
+          <div class="flex-1 text-white text-[13.5px] sm:text-sm leading-snug font-medium">${numMatch[2]}</div>
         </div>
       `;
     }
@@ -1154,14 +1163,14 @@ function renderFormattedAnswer(text) {
     if (line.startsWith('•') || line.startsWith('-')) {
       const content = line.replace(/^[•\-]\s*/, '');
       return `
-        <div class="flex items-start gap-2 py-1 text-slate-800 text-[13.5px] leading-snug">
-          <span class="text-indigo-600 font-bold leading-tight">•</span>
+        <div class="flex items-start gap-2 py-1 text-white text-[13.5px] sm:text-sm leading-snug font-medium">
+          <span class="text-indigo-400 font-bold leading-tight">•</span>
           <div class="flex-1">${content}</div>
         </div>
       `;
     }
     // Regular paragraph
-    return `<p class="text-slate-800 text-[13.5px] leading-snug py-1">${line}</p>`;
+    return `<p class="text-white text-[13.5px] sm:text-sm leading-snug py-1 font-medium">${line}</p>`;
   }).join('');
 
   answerContent.innerHTML = formattedHtml || `<p class="text-xs text-slate-400 italic">Formatting answer...</p>`;

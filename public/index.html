@@ -86,7 +86,7 @@
     <!-- AUDIO CONTROLS & STATUS -->
     <div class="flex items-center space-x-2 sm:space-x-2.5">
       <!-- Dual Mode Selector: Tab Audio vs Mic Audio (Visible in General Mode, hidden in strict single-mode) -->
-      <div id="audioSourceSelector" class="hidden md:flex items-center bg-slate-900 rounded-lg p-0.5 border border-slate-800 text-xs shrink-0">
+      <div id="audioSourceSelector" class="hidden items-center bg-slate-900 rounded-lg p-0.5 border border-slate-800 text-xs shrink-0">
         <button id="sourceTabBtn" class="px-2.5 py-1 rounded-md font-semibold bg-indigo-600 text-white shadow-xs transition" title="Tab Audio: Intercept call audio (Interviewer only, zero mic capture)">
           <i data-lucide="headphones" class="w-3.5 h-3.5 inline mr-1"></i>Tab Audio
         </button>
@@ -173,14 +173,14 @@
           <div class="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-indigo-400 shadow-inner">
             <i id="emptyPlaceholderIcon" data-lucide="headphones" class="w-5 h-5 text-indigo-400"></i>
           </div>
-          <p id="emptyPlaceholderText" class="text-[11px] sm:text-xs text-center max-w-sm px-2 text-slate-400 leading-relaxed">
+          <p id="emptyPlaceholderText" class="text-xs sm:text-sm text-center max-w-md px-2 text-slate-300 font-medium leading-relaxed">
             Select <strong>"Start Listening"</strong> to begin intercepting interview questions in sub-150ms.
           </p>
         </div>
       </div>
 
       <!-- Live Typing / Interim Banner -->
-      <div id="interimBar" class="px-3 sm:px-6 py-1.5 bg-slate-950/90 border-t border-slate-800 text-[11px] sm:text-xs text-slate-400 italic hidden flex items-center gap-2 shrink-0">
+      <div id="interimBar" class="px-3 sm:px-6 py-1.5 bg-slate-900 border-t border-slate-800 text-[11px] sm:text-xs text-white font-medium italic hidden flex items-center gap-2 shrink-0">
         <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
         <span id="interimText" class="truncate">Listening to speech...</span>
       </div>
