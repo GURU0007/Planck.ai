@@ -69,6 +69,14 @@ function createStealthWindow() {
     });
   }
 
+  // Enable F5 and Ctrl+R to quickly reload the prompter inside Electron
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r') || (input.meta && input.key.toLowerCase() === 'r')) {
+      console.log('[Stealth] Reloading page...');
+      mainWindow.reload();
+    }
+  });
+
   // Global Panic Shortcut: Ctrl+Shift+H to immediately hide or unhide overlay
   globalShortcut.register('CommandOrControl+Shift+H', () => {
     if (mainWindow.isVisible()) {
