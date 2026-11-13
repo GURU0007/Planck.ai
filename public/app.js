@@ -131,6 +131,9 @@ function applyModeConfiguration(mode) {
 
   if (!mode) {
     // Default / All-in-one general mode
+    if (paneAnswers) paneAnswers.classList.remove('hidden');
+    const mobileBottomBar = document.getElementById('mobileBottomBar');
+    if (mobileBottomBar) mobileBottomBar.classList.remove('hidden');
     if (audioSourceSelector) audioSourceSelector.classList.remove('hidden');
     if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.remove('hidden');
     if (openShareModalBtn) openShareModalBtn.classList.remove('hidden');
@@ -143,6 +146,9 @@ function applyModeConfiguration(mode) {
   // FIELD-SPECIFIC STRICT FILTERING: Hide unrelated buttons & features
   if (mode === 'recruiter') {
     // Recruiter Call Helper: Only resume/context & call audio
+    if (paneAnswers) paneAnswers.classList.remove('hidden');
+    const mobileBottomBar = document.getElementById('mobileBottomBar');
+    if (mobileBottomBar) mobileBottomBar.classList.remove('hidden');
     if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
     if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
     if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
@@ -160,29 +166,44 @@ function applyModeConfiguration(mode) {
     if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Recruiter Call Helper:</strong> Ready for recruiter screening. Upload your resume or job description via <strong>"Upload Resume"</strong>. As the recruiter speaks, instant STAR talking points stream in ~120ms.';
   } else if (mode === 'practice') {
     // Otter Practice: Only live transcription & live spectator sharing
+    // HIDE SECOND HALF ANSWER GENERATION SCREEN COMPLETELY! ONLY ONE SCREEN FOR HOST!
+    if (paneAnswers) paneAnswers.classList.add('hidden');
+    const mobileBottomBar = document.getElementById('mobileBottomBar');
+    if (mobileBottomBar) mobileBottomBar.classList.add('hidden');
+
     if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
     if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
     if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
     if (openContextBtn) openContextBtn.classList.add('hidden');
     if (openShareModalBtn) openShareModalBtn.classList.remove('hidden');
 
-    // Widen transcript pane for reading comfort
-    if (paneTranscript && paneAnswers) {
-      paneTranscript.className = 'w-full h-[32vh] md:h-full md:w-3/5 border-b md:border-b-0 md:border-r border-slate-800/80 flex flex-col bg-slate-900/80 backdrop-blur-sm shrink-0 md:shrink overflow-hidden shadow-xs transition-all';
-      paneAnswers.className = 'w-full flex-1 min-h-0 md:h-full md:w-2/5 flex flex-col bg-slate-950/60 overflow-hidden';
+    // Make transcript pane take 100% full screen
+    if (paneTranscript) {
+      paneTranscript.className = 'w-full h-full border-none flex flex-col bg-slate-950 overflow-hidden transition-all';
     }
+
+    // TEXT IN THE MIDDLE LIKE PARTICIPANT FOR OTTER (Centered container)
+    const transcriptContainer = document.getElementById('transcriptContainer');
+    if (transcriptContainer) {
+      transcriptContainer.className = 'flex-1 p-4 sm:p-8 overflow-y-auto space-y-4 max-w-2xl sm:max-w-3xl mx-auto w-full';
+    }
+
+    // FORCE SOURCE TO MICROPHONE ONLY (NO TAB AUDIO)
+    setSource('mic');
 
     if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-purple-950/60 border-purple-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
     if (badge) {
       badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-purple-600 text-white';
       badge.textContent = 'Otter Practice';
     }
-    if (text) text.textContent = 'Only Practice controls active. Live word-by-word streaming transcript & private Otter-style spectator link.';
-    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Otter Live Word-by-Word Transcript';
-    if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400"></i> Mock Talking Points';
-    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Otter Practice Mode:</strong> Click <strong>"Start Speaking"</strong> to rehearse answers aloud. Click <strong>"Share Live"</strong> to invite a mentor or peer to watch your real-time transcript mirror.';
+    if (text) text.textContent = 'Single centered screen active (like participant view). Transcribing microphone only. Click "Share Live" to mirror with a spectator.';
+    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Otter Live Speech Transcription';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Otter Practice Mode:</strong> Tap <strong>"Start Speaking"</strong> to begin transcribing your microphone. Spoken speech appears centered in the middle of the screen. Click <strong>"Share Live"</strong> above to mirror this session.';
   } else if (mode === 'stealth') {
-    // Stealth Interview Expert: Only tab interceptor, launcher .bat & standalone HUD
+    // Interview Copilot (Stealth): Only tab interceptor, launcher .bat & standalone HUD
+    if (paneAnswers) paneAnswers.classList.remove('hidden');
+    const mobileBottomBar = document.getElementById('mobileBottomBar');
+    if (mobileBottomBar) mobileBottomBar.classList.remove('hidden');
     if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
     if (openShareModalBtn) openShareModalBtn.classList.add('hidden');
     if (openContextBtn) openContextBtn.classList.add('hidden');
@@ -192,29 +213,12 @@ function applyModeConfiguration(mode) {
     if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-emerald-950/60 border-emerald-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
     if (badge) {
       badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-600 text-white';
-      badge.textContent = 'Stealth Expert';
+      badge.textContent = 'Interview Copilot';
     }
-    if (text) text.textContent = 'Only Stealth controls active. 100% Invisible to screenshare & Tab Audio only (zero candidate mic noise).';
+    if (text) text.textContent = 'Only Interview Copilot controls active. 100% Invisible to screenshare & Tab Audio only (zero candidate mic noise).';
     if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Interviewer Voice (Browser Tab Only)';
-    if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="shield" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400"></i> Stealth Technical Answers';
-    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Stealth Mode:</strong> 100% invisible on Zoom, Teams & Meet. Click <strong>"Start Listening"</strong> with your interview tab selected. Only the interviewer is captured (your voice is excluded).';
-  } else if (mode === 'twoway') {
-    // Normal Voice Speaking 2-Way: Clean hands-free conversational voice
-    if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
-    if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
-    if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
-    if (openShareModalBtn) openShareModalBtn.classList.add('hidden');
-    if (openContextBtn) openContextBtn.classList.add('hidden');
-
-    if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-blue-950/60 border-blue-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
-    if (badge) {
-      badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-blue-600 text-white';
-      badge.textContent = '2-Way Voice';
-    }
-    if (text) text.textContent = 'Only 2-Way Voice controls active. Turn on mobile/laptop speaker and converse naturally back and forth.';
-    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Spoken Voice Dialogue';
-    if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400"></i> AI Voice Response';
-    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>2-Way Conversational Mode:</strong> Unmute your speakerphone. Tap <strong>"Start Speaking"</strong> and speak aloud. Planck listens and streams instant conversational responses.';
+    if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="shield-check" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400"></i> Interview Copilot Answers';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Interview Copilot:</strong> 100% invisible on Zoom, Teams & Meet. Click <strong>"Start Listening"</strong> with your interview tab selected. Only the interviewer is captured (your voice is excluded).';
   }
 
   if (window.lucide) lucide.createIcons();
