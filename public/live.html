@@ -918,6 +918,9 @@
 
       } catch (err) {
         console.warn('[Live Capture] Tab capture cancelled or error:', err);
+        if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+          alert('Audio Capture Notice: ' + (err.message || 'Unable to capture audio.'));
+        }
         stopLiveCapture();
       }
     }

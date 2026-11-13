@@ -2,7 +2,7 @@
 // Uses OS-level capture exclusion (WDA_EXCLUDEFROMCAPTURE on Windows, NSWindowSharingNone on macOS)
 // The window is 100% visible on your physical screen, but completely INVISIBLE to Zoom, Meet, Teams screen shares!
 
-const { app, BrowserWindow, screen, globalShortcut } = require('electron');
+const { app, BrowserWindow, screen, globalShortcut, session, desktopCapturer } = require('electron');
 
 let mainWindow = null;
 
@@ -101,10 +101,31 @@ function createStealthWindow() {
 }
 
 app.whenReady().then(() => {
+  // Automatically permit display and audio loopback capture
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(true);
+  });
+
+  // Enable 1-click audio capture inside Electron (captures loopback audio from speakers/headphones)
+  session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
+    try {
+      const sources = await desktopCapturer.getSources({ types: ['screen'] });
+      if (sources && sources.length > 0) {
+        callback({ video: sources[0], audio: 'loopback' });
+      } else {
+        callback(null);
+      }
+    } catch (err) {
+      console.error('[Stealth Overlay] Display media error:', err);
+      callback(null);
+    }
+  });
+
   createStealthWindow();
   console.log('====================================================');
   console.log('🛡️ PLANCK.AI STEALTH OVERLAY RUNNING');
-  console.log('   - Windows/Mac Screen Capture Exclusion: ACTIVE');
+  console.log('   - Windows Screen Capture Exclusion: ACTIVE');
+  console.log('   - Loopback Audio Capture: ENABLED');
   console.log('   - Zoom, Google Meet & Teams see through this window');
   console.log('   - Toggle visibility anytime with: Ctrl+Shift+H');
   console.log('====================================================');
