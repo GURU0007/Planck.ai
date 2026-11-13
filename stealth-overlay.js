@@ -40,10 +40,34 @@ function createStealthWindow() {
   // =========================================================================
   mainWindow.setContentProtection(true);
 
-  // URL to load: defaults to local server or Render live teleprompter
-  const targetUrl = process.env.PLANCK_URL || 'https://planck-ai.onrender.com/live?room=main_room';
-  console.log('[Stealth Overlay] Loading:', targetUrl);
-  mainWindow.loadURL(targetUrl);
+  // Auto-detect: Use localhost:3000 if running, otherwise use Render cloud
+  const http = require('http');
+  const localUrl = 'http://localhost:3000/live?room=main_room';
+  const renderUrl = 'https://planck-ai.onrender.com/live?room=main_room';
+
+  if (process.env.PLANCK_URL) {
+    console.log('[Stealth Overlay] Using custom PLANCK_URL:', process.env.PLANCK_URL);
+    mainWindow.loadURL(process.env.PLANCK_URL);
+  } else {
+    const probeReq = http.get('http://localhost:3000/api/status', (res) => {
+      if (res.statusCode === 200) {
+        console.log('[Stealth Overlay] Connected to Local Server (0ms latency):', localUrl);
+        mainWindow.loadURL(localUrl);
+      } else {
+        console.log('[Stealth Overlay] Connected to Cloud Server:', renderUrl);
+        mainWindow.loadURL(renderUrl);
+      }
+    });
+    probeReq.on('error', () => {
+      console.log('[Stealth Overlay] Connected to Cloud Server:', renderUrl);
+      mainWindow.loadURL(renderUrl);
+    });
+    probeReq.setTimeout(600, () => {
+      probeReq.destroy();
+      console.log('[Stealth Overlay] Connected to Cloud Server:', renderUrl);
+      mainWindow.loadURL(renderUrl);
+    });
+  }
 
   // Global Panic Shortcut: Ctrl+Shift+H to immediately hide or unhide overlay
   globalShortcut.register('CommandOrControl+Shift+H', () => {

@@ -180,6 +180,16 @@
     const centerAiContent = document.getElementById('centerAiContent');
 
     roomIdDisplay.textContent = roomId;
+    if (roomIdDisplay.parentElement) {
+      roomIdDisplay.parentElement.style.cursor = 'pointer';
+      roomIdDisplay.parentElement.title = 'Click to switch Room ID';
+      roomIdDisplay.parentElement.addEventListener('click', () => {
+        const target = prompt('Enter Room ID to connect to:', roomIdDisplay.textContent || 'main_room');
+        if (target && target.trim()) {
+          window.location.search = `?room=${encodeURIComponent(target.trim())}`;
+        }
+      });
+    }
 
     // Active Continuous Prompt State
     let isInitialWaiting = true;
@@ -244,6 +254,9 @@
 
       if (data.type === 'session_init') {
         pinModal.classList.add('hidden');
+        if (data.roomId) {
+          roomIdDisplay.textContent = data.roomId;
+        }
         if (data.hostActive) {
           hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
           hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0';

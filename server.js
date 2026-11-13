@@ -124,6 +124,17 @@ wss.on('connection', (ws, req) => {
       liveRooms.set(roomId, room);
     }
 
+    // SMART AUTO-ROUTING: If the requested room has no active host, auto-connect to any active host
+    if (!room.hostWs || room.hostWs.readyState !== WebSocket.OPEN) {
+      for (const [activeId, activeRoom] of liveRooms.entries()) {
+        if (activeRoom.hostWs && activeRoom.hostWs.readyState === WebSocket.OPEN) {
+          console.log(`[Spectator Smart Route] Auto-connecting spectator from "${roomId}" to active host room "${activeId}"`);
+          room = activeRoom;
+          break;
+        }
+      }
+    }
+
     // Verify PIN if room has one set
     if (room.pin && room.pin !== providedPin) {
       ws.send(JSON.stringify({ type: 'pin_required' }));
@@ -136,7 +147,7 @@ wss.on('connection', (ws, req) => {
     // Send session init catch-up state
     ws.send(JSON.stringify({
       type: 'session_init',
-      roomId,
+      roomId: room.hostWs ? (Array.from(liveRooms.entries()).find(([_, r]) => r === room)?.[0] || roomId) : roomId,
       hostActive: Boolean(room.hostWs && room.hostWs.readyState === WebSocket.OPEN),
       history: room.history,
       currentQuestion: room.currentQuestion,
@@ -173,6 +184,30 @@ wss.on('connection', (ws, req) => {
   } else {
     room.hostWs = ws;
     if (providedPin) room.pin = providedPin;
+  }
+
+  // Smart Adopt: If spectators are waiting in empty default rooms, adopt them into this active room!
+  for (const emptyRoomId of ['main_room', 'default', 'session_default']) {
+    if (emptyRoomId !== roomId && liveRooms.has(emptyRoomId)) {
+      const emptyRoom = liveRooms.get(emptyRoomId);
+      if (!emptyRoom.hostWs || emptyRoom.hostWs.readyState !== WebSocket.OPEN) {
+        emptyRoom.spectators.forEach(spec => {
+          if (spec.readyState === WebSocket.OPEN) {
+            console.log(`[Host Smart Adopt] Adopting waiting spectator from "${emptyRoomId}" into active room "${roomId}"`);
+            room.spectators.add(spec);
+            spec.send(JSON.stringify({
+              type: 'session_init',
+              roomId,
+              hostActive: true,
+              history: room.history,
+              currentQuestion: room.currentQuestion,
+              currentAnswer: room.currentAnswer,
+            }));
+          }
+        });
+        emptyRoom.spectators.clear();
+      }
+    }
   }
 
   // Helper function to broadcast to all spectators in this room
