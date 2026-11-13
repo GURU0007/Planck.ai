@@ -108,12 +108,6 @@
         <span id="hostStatusText" class="hidden xs:inline">Connecting</span>
       </div>
 
-      <!-- Optional Earbud Whisper -->
-      <button id="specWhisperToggle" class="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition shrink-0" title="Listen to AI answers in Bluetooth earbuds">
-        <i data-lucide="headphones" class="w-3.5 h-3.5 text-indigo-600 shrink-0"></i>
-        <span id="specWhisperText" class="hidden md:inline">Whisper: OFF</span>
-      </button>
-
       <!-- Always on Top Floating Pin (Document Picture-in-Picture) -->
       <button id="pipFloatBtn" class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition shrink-0" title="Float window Always on Top above all apps">
         <i data-lucide="pin" class="w-3 h-3 text-indigo-600"></i>
@@ -267,7 +261,6 @@
     let roomPin = urlParams.get('pin') || '';
 
     let specWs = null;
-    let specWhisperEnabled = false;
     let activeView = 'qa'; // Default to Q&A Copilot mode!
 
     // DOM Elements - General & Status
@@ -276,8 +269,6 @@
     const hostStatusBadge = document.getElementById('hostStatusBadge');
     const hostStatusDot = document.getElementById('hostStatusDot');
     const hostStatusText = document.getElementById('hostStatusText');
-    const specWhisperToggle = document.getElementById('specWhisperToggle');
-    const specWhisperText = document.getElementById('specWhisperText');
 
     // View Switchers
     const viewQaBtn = document.getElementById('viewQaBtn');
@@ -557,10 +548,6 @@
         // Add to past turns
         pastTurns.unshift({ question: currentQuestion, answer: currentAiAnswer, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
         renderPastHistory();
-
-        if (specWhisperEnabled && currentAiAnswer) {
-          speakSpectatorWhisper(currentAiAnswer);
-        }
       }
     }
 
@@ -741,31 +728,6 @@
     pinInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') submitPinBtn.click();
     });
-
-    // Earbud Whisper Toggle
-    specWhisperToggle.addEventListener('click', () => {
-      specWhisperEnabled = !specWhisperEnabled;
-      if (specWhisperEnabled) {
-        specWhisperToggle.className = 'border border-emerald-500 bg-emerald-50 text-emerald-700 p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
-        if (specWhisperText) specWhisperText.textContent = 'Whisper: ON';
-        if ('speechSynthesis' in window) {
-          const silent = new SpeechSynthesisUtterance(' ');
-          window.speechSynthesis.speak(silent);
-        }
-      } else {
-        specWhisperToggle.className = 'border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition';
-        if (specWhisperText) specWhisperText.textContent = 'Whisper: OFF';
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      }
-    });
-
-    function speakSpectatorWhisper(text) {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text.replace(/[*_#`-]/g, ''));
-      utterance.rate = 1.25;
-      window.speechSynthesis.speak(utterance);
-    }
 
     // Floating Always on Top Window (Picture-in-Picture)
     const pipFloatBtn = document.getElementById('pipFloatBtn');
