@@ -2,48 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>planck.ai</title>
-  <!-- PDF.js CDN for client-side PDF resume parsing -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Planck.ai | Real-Time Voice AI Copilot</title>
+  
+  <!-- PDF & Document Parsers -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <!-- Mammoth.js CDN for client-side DOCX resume parsing -->
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
-  <!-- Tailwind CSS CDN -->
+
+  <!-- Tailwind CSS & Lucide Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+
   <style>
-    @keyframes pulse-slow {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.8; transform: scale(1.05); }
-    }
-    .animate-pulse-slow {
-      animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
-    /* Custom scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #f1f5f9;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #94a3b8;
-    }
-    /* Pure Liquid Silk Kinetic Word Flow: Zero vertical drop, soft optical bloom */
+    /* 60 FPS Butter-Silk Kinetic Typography Transition */
     @keyframes butterSilk {
       0% {
         opacity: 0;
-        filter: blur(4px);
-      }
-      50% {
-        opacity: 0.85;
-        filter: blur(0.8px);
+        filter: blur(1.5px);
       }
       100% {
         opacity: 1;
@@ -55,71 +31,106 @@
       animation: butterSilk 280ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
       will-change: opacity, filter;
     }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.5; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.02); }
+    }
+    .glow-bg {
+      animation: pulseGlow 6s ease-in-out infinite;
+    }
+    /* Sleek custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden">
+<body class="bg-slate-950 text-slate-100 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden selection:bg-indigo-500 selection:text-white">
+
+  <!-- Ambient Glow Gradients (Matching Landing Page Aesthetic) -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl glow-bg"></div>
+    <div class="absolute top-1/3 -right-40 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl glow-bg"></div>
+    <div class="absolute -bottom-40 left-1/3 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl glow-bg"></div>
+  </div>
 
   <!-- TOP NAVIGATION HEADER -->
-  <header class="bg-white border-b border-slate-200 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shrink-0 shadow-sm gap-2">
-    <div class="flex items-center space-x-2 sm:space-x-2.5 shrink-0">
+  <header class="relative z-20 bg-slate-950/90 border-b border-slate-800/80 px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between shrink-0 backdrop-blur-md gap-2">
+    <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
       <a href="/" class="flex items-center gap-2 group" title="Return to Planck.ai Landing Page">
-        <div class="bg-gradient-to-br from-indigo-600 to-indigo-900 text-amber-300 p-1.5 sm:p-2 rounded-xl shadow-md flex items-center justify-center ring-2 ring-indigo-500/20 group-hover:scale-105 transition-transform">
-          <i data-lucide="zap" class="w-4 h-4 sm:w-5 sm:h-5 fill-amber-300 text-amber-300"></i>
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-indigo-600/25 group-hover:scale-105 transition-transform">
+          <i data-lucide="zap" class="w-4 h-4 text-white fill-white"></i>
         </div>
         <div>
-          <h1 class="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight leading-tight">
-            planck<span class="text-indigo-600">.ai</span>
+          <h1 class="font-black text-base sm:text-lg text-white tracking-tight leading-tight">
+            planck<span class="text-indigo-400">.ai</span>
           </h1>
         </div>
       </a>
-      <a href="/" class="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 px-2.5 py-1 rounded-lg transition ml-1" title="Back to All 4 Feature Cards">
-        <i data-lucide="layout-grid" class="w-3 h-3 text-indigo-500"></i>
+      <a href="/" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 px-2.5 py-1.5 rounded-lg transition" title="Back to All 4 Modes">
+        <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-indigo-400"></i>
         <span>Modes</span>
       </a>
     </div>
 
     <!-- AUDIO CONTROLS & STATUS -->
-    <div class="flex items-center space-x-2 sm:space-x-3">
-      <!-- Dual Mode Selector: Google Voice Call Interceptor vs Otter Live Mic (Desktop Only) -->
-      <div id="audioSourceSelector" class="hidden md:flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 text-xs shrink-0">
-        <button id="sourceTabBtn" class="px-3 py-1.5 rounded-md font-semibold bg-white text-indigo-600 shadow-sm transition" title="Interview Copilot: Intercept Google Voice, Zoom, or Teams call audio">
-          <i data-lucide="headphones" class="w-3.5 h-3.5 inline mr-1"></i>Google Voice / Call
+    <div class="flex items-center space-x-2 sm:space-x-2.5">
+      <!-- Dual Mode Selector: Tab Audio vs Mic Audio (Visible in General Mode, hidden in strict single-mode) -->
+      <div id="audioSourceSelector" class="hidden md:flex items-center bg-slate-900 rounded-lg p-0.5 border border-slate-800 text-xs shrink-0">
+        <button id="sourceTabBtn" class="px-2.5 py-1 rounded-md font-semibold bg-indigo-600 text-white shadow-xs transition" title="Tab Audio: Intercept call audio (Interviewer only, zero mic capture)">
+          <i data-lucide="headphones" class="w-3.5 h-3.5 inline mr-1"></i>Tab Audio
         </button>
-        <button id="sourceMicBtn" class="px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition" title="Otter Mode: Speak directly into your microphone and share live link">
-          <i data-lucide="mic" class="w-3.5 h-3.5 inline mr-1"></i>Otter Mic (Live Share)
+        <button id="sourceMicBtn" class="px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-white transition" title="Microphone: Speak aloud and share live link">
+          <i data-lucide="mic" class="w-3.5 h-3.5 inline mr-1"></i>Microphone
         </button>
       </div>
 
       <!-- Mobile Microphone Indicator (Mobile Only) -->
-      <div id="mobileMicBadge" class="flex md:hidden items-center gap-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0" title="Audio uses your device microphone">
-        <i data-lucide="mic" class="w-3.5 h-3.5 text-indigo-600"></i>
-        <span>Mic Mode</span>
+      <div id="mobileMicBadge" class="flex md:hidden items-center gap-1.5 bg-slate-900 border border-slate-800 text-indigo-300 px-2.5 py-1.5 rounded-lg text-xs font-semibold shrink-0" title="Audio uses your device microphone">
+        <i data-lucide="mic" class="w-3.5 h-3.5 text-indigo-400"></i>
+        <span>Mic</span>
       </div>
 
       <!-- Dynamic Action Button: Changes dynamically between "Start Listening" and "Start Speaking" -->
-      <button id="toggleAudioBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0">
+      <button id="toggleAudioBtn" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition text-xs sm:text-sm shrink-0">
         <i data-lucide="headphones" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
         <span id="toggleAudioBtnText">Start Listening</span>
       </button>
 
-      <!-- Stealth Desktop App Launcher (LockedIn AI Style) -->
-      <a id="downloadStealthHeaderBtn" href="/download/stealth" download="planck-stealth.bat" class="border border-indigo-300 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-2.5 sm:px-3 py-1.5 rounded-lg transition text-xs font-bold flex items-center gap-1.5 shadow-xs shrink-0" title="Download standalone invisible stealth app (.bat) - Zero installation required">
-        <i data-lucide="shield" class="w-3.5 h-3.5 text-amber-300"></i>
-        <span class="hidden sm:inline">Stealth App (.bat)</span>
+      <!-- Stealth Desktop App Launcher (LockedIn AI Style) - Field-specific -->
+      <a id="downloadStealthHeaderBtn" href="/download/stealth" download="planck-stealth.bat" class="border border-indigo-500/40 bg-indigo-950/80 hover:bg-indigo-900/80 text-indigo-200 px-2.5 sm:px-3 py-1.5 rounded-xl transition text-xs font-bold flex items-center gap-1.5 shadow-xs shrink-0" title="Download standalone invisible stealth app (.bat) - Zero installation required">
+        <i data-lucide="shield" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span class="hidden sm:inline">Stealth .bat</span>
         <span class="sm:hidden">Stealth</span>
       </a>
 
-      <!-- Otter-style Live Share Button -->
-      <button id="openShareModalBtn" type="button" class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 sm:px-3 py-1.5 rounded-lg transition text-xs font-semibold flex items-center gap-1.5 shadow-xs shrink-0" title="Share real-time spectator link">
-        <i data-lucide="share-2" class="w-3.5 h-3.5 text-indigo-600"></i>
+      <!-- Open Floating HUD button (Direct link for stealth mode) -->
+      <a id="openStealthHudHeaderBtn" href="/live?room=main_room" target="_blank" class="hidden border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 sm:px-3 py-1.5 rounded-xl transition text-xs font-semibold items-center gap-1.5 shadow-xs shrink-0" title="Open floating standalone Always-on-Top HUD">
+        <i data-lucide="external-link" class="w-3.5 h-3.5 text-indigo-400"></i>
+        <span class="hidden sm:inline">Open HUD</span>
+      </a>
+
+      <!-- Otter-style Live Share Button - Field-specific -->
+      <button id="openShareModalBtn" type="button" class="border border-purple-500/40 bg-purple-950/80 hover:bg-purple-900/80 text-purple-200 px-2.5 sm:px-3 py-1.5 rounded-xl transition text-xs font-bold flex items-center gap-1.5 shadow-xs shrink-0" title="Share real-time spectator link">
+        <i data-lucide="share-2" class="w-3.5 h-3.5 text-purple-400"></i>
         <span class="hidden sm:inline">Share Live</span>
         <span class="sm:hidden">Share</span>
-        <span id="spectatorBadgeCount" class="hidden text-[10px] bg-emerald-600 text-white font-bold px-1.5 py-0.2 rounded-full">0</span>
+        <span id="spectatorBadgeCount" class="hidden text-[10px] bg-emerald-500 text-white font-bold px-1.5 py-0.2 rounded-full">0</span>
       </button>
 
-      <!-- Settings / Resume Upload Button -->
-      <button id="openContextBtn" class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2.5 sm:px-3 py-1.5 rounded-lg transition text-xs font-semibold flex items-center gap-1.5 shadow-xs shrink-0" title="Upload Resume & Knowledge Context">
-        <i data-lucide="file-up" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600"></i>
+      <!-- Settings / Resume Upload Button - Field-specific -->
+      <button id="openContextBtn" class="border border-indigo-500/40 bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 sm:px-3 py-1.5 rounded-xl transition text-xs font-bold flex items-center gap-1.5 shadow-xs shrink-0" title="Upload Resume & Knowledge Context">
+        <i data-lucide="file-up" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400"></i>
         <span class="hidden sm:inline">Upload Resume</span>
         <span class="sm:hidden">Resume</span>
       </button>
@@ -127,75 +138,77 @@
   </header>
 
   <!-- STATUS BANNER (If API Keys missing) -->
-  <div id="apiBanner" class="hidden bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2 text-xs text-amber-800 flex items-center justify-between">
+  <div id="apiBanner" class="relative z-20 hidden bg-amber-950/80 border-b border-amber-800 px-4 sm:px-6 py-2 text-xs text-amber-300 flex items-center justify-between">
     <div class="flex items-center gap-2">
-      <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0"></i>
-      <span id="apiBannerText">API Keys not configured. Update your <code class="bg-amber-100 px-1 py-0.5 rounded">.env</code> file with DEEPGRAM_API_KEY and GROQ_API_KEY.</span>
+      <i data-lucide="alert-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>
+      <span id="apiBannerText">API Keys not configured. Update your <code class="bg-amber-900/60 px-1 py-0.5 rounded text-amber-200">.env</code> file with DEEPGRAM_API_KEY and GROQ_API_KEY.</span>
     </div>
-    <span class="font-medium hidden sm:inline">Run <code class="bg-amber-100 px-1 py-0.5 rounded">npm start</code> after saving .env</span>
+    <span class="font-medium hidden sm:inline">Run <code class="bg-amber-900/60 px-1 py-0.5 rounded text-amber-200">npm start</code> after saving .env</span>
   </div>
 
-  <!-- ACTIVE MODE BANNER (When launched from 4 feature fields on Landing Page) -->
-  <div id="activeModeBanner" class="hidden px-4 sm:px-6 py-2 border-b text-xs flex items-center justify-between shrink-0 shadow-xs transition-colors">
+  <!-- ACTIVE MODE BANNER (Field-Specific Indicator & Quick Guidance) -->
+  <div id="activeModeBanner" class="relative z-20 hidden px-4 sm:px-6 py-2 border-b text-xs flex items-center justify-between shrink-0 shadow-xs transition-colors">
     <div class="flex items-center gap-2.5">
-      <span id="activeModeBadge" class="font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px]"></span>
-      <span id="activeModeText" class="font-medium text-slate-700"></span>
+      <span id="activeModeBadge" class="font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px]"></span>
+      <span id="activeModeText" class="font-medium text-slate-300"></span>
     </div>
     <div class="flex items-center gap-2">
-      <a href="/" class="text-xs font-semibold text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition">
-        <span>Change Mode</span>
+      <a href="/" class="text-xs font-semibold text-slate-400 hover:text-indigo-400 flex items-center gap-1 transition">
+        <span>Switch Mode</span>
         <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
       </a>
     </div>
   </div>
 
-  <!-- MAIN WORKSPACE: UNIFIED SINGLE SCREEN ON MOBILE, DUAL-PANE ON DESKTOP -->
-  <main class="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden relative">
+  <!-- MAIN WORKSPACE: FIELD-SPECIFIC DUAL PANE -->
+  <main class="relative z-10 flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
 
-    <!-- TOP SECTION ON MOBILE (20% HEIGHT, SCROLLS UP) | LEFT PANE ON DESKTOP (50% WIDTH) -->
-    <section id="paneTranscript" class="w-full h-[20vh] max-h-[22vh] min-h-[90px] md:h-full md:w-1/2 md:max-h-none border-b md:border-b-0 md:border-r border-slate-200 flex flex-col bg-white shrink-0 md:shrink overflow-hidden shadow-xs">
+    <!-- TOP SECTION ON MOBILE (22% HEIGHT) | LEFT PANE ON DESKTOP (50% WIDTH, ADJUSTABLE IN PRACTICE MODE) -->
+    <section id="paneTranscript" class="w-full h-[22vh] max-h-[25vh] min-h-[90px] md:h-full md:w-1/2 md:max-h-none border-b md:border-b-0 md:border-r border-slate-800/80 flex flex-col bg-slate-900/80 backdrop-blur-sm shrink-0 md:shrink overflow-hidden shadow-xs transition-all">
       <!-- Subheader -->
-      <div class="px-3 sm:px-6 py-1.5 sm:py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+      <div class="px-3 sm:px-6 py-2 sm:py-2.5 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/60 shrink-0">
         <div class="flex items-center gap-1.5 sm:gap-2">
-          <span id="recordingIndicator" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-          <h2 class="text-xs sm:text-sm font-semibold text-slate-700">Live Questions & Audio</h2>
+          <span id="recordingIndicator" class="w-2.5 h-2.5 rounded-full bg-slate-600"></span>
+          <h2 id="transcriptPaneTitle" class="text-xs sm:text-sm font-bold text-white">Live Questions &amp; Audio</h2>
           <span id="audioMeterText" class="text-[10px] sm:text-xs text-slate-400 font-mono">0 dB</span>
         </div>
-        <button id="clearTranscriptBtn" class="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition">
-          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Clear</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button id="clearTranscriptBtn" class="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 transition">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Clear</span>
+          </button>
+        </div>
       </div>
 
-      <!-- Transcript Scroll Container (Auto-scrolls up) -->
-      <div id="transcriptContainer" class="flex-1 p-2 sm:p-6 overflow-y-auto space-y-2 sm:space-y-3">
+      <!-- Transcript Scroll Container (Auto-scrolls) -->
+      <div id="transcriptContainer" class="flex-1 p-3 sm:p-6 overflow-y-auto space-y-2.5 sm:space-y-3">
         <!-- Placeholder / Empty State -->
-        <div id="emptyTranscriptPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-1">
-          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-            <i id="emptyPlaceholderIcon" data-lucide="headphones" class="w-4 h-4 text-indigo-500"></i>
+        <div id="emptyTranscriptPlaceholder" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
+          <div class="w-10 h-10 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-center text-indigo-400 shadow-inner">
+            <i id="emptyPlaceholderIcon" data-lucide="headphones" class="w-5 h-5 text-indigo-400"></i>
           </div>
-          <p id="emptyPlaceholderText" class="text-[11px] sm:text-xs text-center max-w-xs px-2">
-            Select <strong>"Google Voice / Call"</strong> to listen to interviewer questions, or <strong>"Otter Mic"</strong> to speak and share live.
+          <p id="emptyPlaceholderText" class="text-[11px] sm:text-xs text-center max-w-sm px-2 text-slate-400 leading-relaxed">
+            Select <strong>"Start Listening"</strong> to begin intercepting interview questions in sub-150ms.
           </p>
         </div>
       </div>
 
       <!-- Live Typing / Interim Banner -->
-      <div id="interimBar" class="px-3 sm:px-6 py-1 bg-slate-50 border-t border-slate-100 text-[11px] sm:text-sm text-slate-500 italic hidden flex items-center gap-2 shrink-0">
+      <div id="interimBar" class="px-3 sm:px-6 py-1.5 bg-slate-950/90 border-t border-slate-800 text-[11px] sm:text-xs text-slate-400 italic hidden flex items-center gap-2 shrink-0">
         <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-        <span id="interimText" class="truncate">Listening...</span>
+        <span id="interimText" class="truncate">Listening to speech...</span>
       </div>
     </section>
 
-    <!-- BOTTOM SECTION ON MOBILE (80% HEIGHT) | RIGHT PANE ON DESKTOP (50% WIDTH) -->
-    <section id="paneAnswers" class="w-full flex-1 min-h-0 md:h-full md:w-1/2 flex flex-col bg-slate-50/50 overflow-hidden">
+    <!-- BOTTOM SECTION ON MOBILE (78% HEIGHT) | RIGHT PANE ON DESKTOP (50% WIDTH) -->
+    <section id="paneAnswers" class="w-full flex-1 min-h-0 md:h-full md:w-1/2 flex flex-col bg-slate-950/60 overflow-hidden">
       <!-- Subheader -->
-      <div class="px-3 sm:px-6 py-1.5 sm:py-2.5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
+      <div class="px-3 sm:px-6 py-2 sm:py-2.5 border-b border-slate-800/80 flex items-center justify-between bg-slate-900/60 shrink-0">
         <div class="flex items-center gap-2">
-          <div class="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
-          <h2 class="text-xs sm:text-sm font-semibold text-slate-800">Instant AI</h2>
-          <span class="text-[10px] sm:text-xs bg-emerald-50 text-emerald-700 font-mono px-2 py-0.5 rounded border border-emerald-200">Groq Qwen 3.8 (~120ms)</span>
+          <div class="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>
+          <h2 id="answersPaneTitle" class="text-xs sm:text-sm font-bold text-white">Instant AI Copilot</h2>
+          <span class="text-[10px] sm:text-xs bg-indigo-950 text-indigo-300 font-mono px-2 py-0.5 rounded-full border border-indigo-800/60">~120ms First Token</span>
         </div>
-        <button id="copyAnswerBtn" class="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition disabled:opacity-40" disabled>
+        <button id="copyAnswerBtn" class="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition disabled:opacity-40" disabled>
           <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
         </button>
       </div>
@@ -203,59 +216,59 @@
       <!-- Active Answer Scroll Container -->
       <div class="p-2.5 sm:p-6 flex-1 min-h-0 flex flex-col overflow-y-auto space-y-2.5 sm:space-y-3">
         
-        <!-- Desktop Trigger Bar (hidden on mobile, mobile has dedicated bottom thumb bar) -->
-        <div class="hidden md:flex bg-indigo-50/70 border border-indigo-100 rounded-xl p-2.5 sm:p-3 items-center justify-between gap-3 shadow-xs shrink-0">
-          <button id="instantAnswerBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-semibold py-2.5 px-4 rounded-lg shadow-sm flex items-center justify-center gap-2 transition text-sm">
+        <!-- Desktop Trigger Bar -->
+        <div id="desktopTriggerBar" class="hidden md:flex bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 sm:p-3 items-center justify-between gap-3 shadow-sm shrink-0">
+          <button id="instantAnswerBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 active:scale-98 text-white font-bold py-2.5 px-4 rounded-xl shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition text-sm">
             <i data-lucide="zap" class="w-4 h-4 fill-amber-300 text-amber-300"></i>
-            <span>Generate Answer Now</span>
-            <span class="text-[10px] bg-indigo-500/80 text-indigo-100 px-1.5 py-0.5 rounded font-mono">Spacebar</span>
+            <span id="instantAnswerBtnText">Generate Answer Now</span>
+            <span class="text-[10px] bg-indigo-700/80 text-indigo-100 px-1.5 py-0.5 rounded font-mono">Spacebar</span>
           </button>
           
-          <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 text-xs shrink-0">
-            <button id="modeManualBtn" class="px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition" title="Generate only when you click or press Spacebar">
+          <div class="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded-lg p-1 text-xs shrink-0">
+            <button id="modeManualBtn" class="px-2.5 py-1 rounded font-bold bg-indigo-600 text-white shadow-xs transition" title="Generate only when you click or press Spacebar">
               Manual
             </button>
-            <button id="modeAutoBtn" class="px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition" title="Automatically generate on 1s silence">
+            <button id="modeAutoBtn" class="px-2.5 py-1 rounded font-medium text-slate-400 hover:text-white transition" title="Automatically generate on 1s pause">
               Auto (1s)
             </button>
           </div>
         </div>
 
         <!-- Detected Question Card -->
-        <div id="detectedQuestionCard" class="hidden bg-white border border-indigo-100 rounded-xl p-2.5 sm:p-4 shadow-sm shrink-0">
+        <div id="detectedQuestionCard" class="hidden bg-indigo-950/40 border border-indigo-700/50 rounded-xl p-2.5 sm:p-4 shadow-sm shrink-0">
           <div class="flex items-center justify-between mb-1">
-            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1">
-              <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Question
+            <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1">
+              <i data-lucide="help-circle" class="w-3.5 h-3.5"></i> Detected Question
             </span>
             <span id="questionTime" class="text-[10px] text-slate-400 font-mono">Just now</span>
           </div>
-          <p id="detectedQuestionText" class="text-xs sm:text-sm font-semibold text-slate-900 leading-snug">
+          <p id="detectedQuestionText" class="text-xs sm:text-sm font-semibold text-white leading-snug">
             "What is your experience optimizing PostgreSQL queries?"
           </p>
         </div>
 
         <!-- Generated Talking Points Box -->
-        <div class="flex-1 bg-white border border-slate-200 rounded-xl p-3 sm:p-5 shadow-sm flex flex-col min-h-[140px]">
-          <div class="flex items-center justify-between mb-1.5 border-b border-slate-100 pb-1.5 shrink-0">
-            <span class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-              <i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500"></i> Talking Points
+        <div class="flex-1 bg-slate-900/90 border border-slate-800 rounded-xl p-3 sm:p-5 shadow-sm flex flex-col min-h-[140px]">
+          <div class="flex items-center justify-between mb-2 border-b border-slate-800/80 pb-2 shrink-0">
+            <span id="talkingPointsHeaderLabel" class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400"></i> Talking Points
             </span>
             <div class="flex items-center gap-2">
-              <span id="answerStatusBadge" class="text-[10px] sm:text-[11px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Standing by</span>
+              <span id="answerStatusBadge" class="text-[10px] sm:text-[11px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-medium">Standing by</span>
             </div>
           </div>
 
-          <div id="answerContent" class="flex-1 overflow-y-auto font-sans text-xs sm:text-sm text-slate-700 leading-relaxed">
+          <div id="answerContent" class="flex-1 overflow-y-auto font-sans text-xs sm:text-sm text-slate-200 leading-relaxed">
             <div class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-4">
-              <i data-lucide="sparkles" class="w-6 h-6 sm:w-8 sm:h-8 text-slate-300"></i>
-              <p class="text-xs text-center max-w-xs">When a question is asked, instant talking points will stream here in ~120ms.</p>
+              <i data-lucide="sparkles" class="w-6 h-6 sm:w-8 sm:h-8 text-slate-500"></i>
+              <p class="text-xs text-center max-w-xs text-slate-400">When an interview question is asked, instant bullet talking points will stream here in ~120ms.</p>
             </div>
           </div>
         </div>
 
-        <!-- Q&A History Section (Desktop Only to save mobile space) -->
-        <div class="hidden md:block space-y-2">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">Previous Q&A Turns</h3>
+        <!-- Q&A History Section (Desktop Only) -->
+        <div id="qaHistorySection" class="hidden md:block space-y-2">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Previous Q&amp;A Turns</h3>
           <div id="qaHistory" class="space-y-2 max-h-48 overflow-y-auto">
             <!-- Dynamically populated -->
           </div>
@@ -266,126 +279,103 @@
     </section>
   </main>
 
-  <!-- MOBILE BOTTOM THUMB ACTION BAR (Sticky & Fixed at bottom, 100% visible on all mobile screens) -->
-  <div id="mobileBottomBar" class="block md:hidden bg-white border-t border-slate-200 px-3 py-2 shrink-0 z-30 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
+  <!-- MOBILE BOTTOM THUMB ACTION BAR -->
+  <div id="mobileBottomBar" class="block md:hidden bg-slate-950 border-t border-slate-800 px-3 py-2 shrink-0 z-30 shadow-2xl" style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom));">
     <div class="flex items-center gap-2">
       <!-- Auto & Manual Selector for Mobile -->
-      <div class="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-1 text-xs font-semibold shrink-0">
+      <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 text-xs font-semibold shrink-0">
         <button id="modeManualBtnMobile" type="button" class="px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white shadow-xs transition" title="Manual: generate on click">
           Manual
         </button>
-        <button id="modeAutoBtnMobile" type="button" class="px-2.5 py-1.5 rounded-lg font-bold text-slate-500 hover:text-slate-800 transition" title="Auto: generates on 1s pause">
+        <button id="modeAutoBtnMobile" type="button" class="px-2.5 py-1.5 rounded-lg font-bold text-slate-400 hover:text-white transition" title="Auto: generates on 1s pause">
           Auto
         </button>
       </div>
 
       <!-- Big Generate Answer Button (Easy thumb reach at bottom) -->
-      <button id="instantAnswerBtnMobile" type="button" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md flex items-center justify-center gap-1.5 text-sm transition">
+      <button id="instantAnswerBtnMobile" type="button" class="flex-1 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold py-2.5 px-3 rounded-xl shadow-md flex items-center justify-center gap-1.5 text-sm transition">
         <i data-lucide="zap" class="w-4 h-4 fill-amber-300 text-amber-300 shrink-0"></i>
         <span class="truncate">Generate Answer</span>
       </button>
     </div>
   </div>
 
-  <!-- RESUME / CONTEXT MODAL DRAWER -->
-  <div id="contextModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-    <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[85vh]">
-      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+  <!-- RESUME / CONTEXT MODAL DRAWER (Dark Theme) -->
+  <div id="contextModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
         <div class="flex items-center gap-2">
-          <i data-lucide="briefcase" class="w-5 h-5 text-indigo-600"></i>
-          <h3 class="font-bold text-slate-800">Custom Knowledge & Resume Context</h3>
+          <i data-lucide="briefcase" class="w-5 h-5 text-indigo-400"></i>
+          <h3 class="font-bold text-white">Custom Knowledge &amp; Resume Context</h3>
         </div>
-        <button id="closeContextBtn" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+        <button id="closeContextBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
 
       <div class="p-6 flex-1 overflow-y-auto space-y-4">
         <!-- DRAG & DROP / CLICK UPLOAD ZONE -->
-        <div id="resumeDropZone" class="border-2 border-dashed border-indigo-200 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50/70 rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2 group">
+        <div id="resumeDropZone" class="border-2 border-dashed border-indigo-800/60 hover:border-indigo-500 bg-indigo-950/20 hover:bg-indigo-950/40 rounded-xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center space-y-2 group">
           <input type="file" id="resumeFileInput" accept=".pdf,.docx,.doc,.txt,.md" class="hidden" />
-          <div class="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition shadow-xs">
+          <div class="w-12 h-12 rounded-full bg-indigo-900/60 text-indigo-400 flex items-center justify-center group-hover:scale-110 transition shadow-inner">
             <i data-lucide="upload-cloud" class="w-6 h-6"></i>
           </div>
           <div>
-            <p class="text-sm font-semibold text-slate-800">Upload Your Resume (PDF, DOCX, or TXT)</p>
-            <p class="text-xs text-slate-500 mt-0.5">Click to browse or drag & drop your resume file here</p>
+            <p class="text-sm font-semibold text-white">Upload Your Resume (PDF, DOCX, or TXT)</p>
+            <p class="text-xs text-slate-400 mt-0.5">Click to browse or drag &amp; drop your resume file here</p>
           </div>
-          <div id="uploadStatusBadge" class="hidden text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-medium flex items-center gap-1.5 mt-2">
-            <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-600"></i>
+          <div id="uploadStatusBadge" class="hidden text-xs bg-emerald-950 border border-emerald-800 text-emerald-300 px-3 py-1 rounded-full font-medium flex items-center gap-1.5 mt-2">
+            <i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i>
             <span id="uploadedFileName">Resume uploaded</span>
           </div>
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-xs font-semibold text-slate-700 flex items-center justify-between">
-            <span>Extracted Resume Text / Talking Points</span>
+          <label class="text-xs font-semibold text-slate-300 flex items-center justify-between">
+            <span>Extracted Resume Text / Target Role</span>
             <span class="text-[10px] text-slate-400 font-normal">Editable</span>
           </label>
-          <textarea id="contextTextarea" rows="8" class="w-full text-xs font-mono p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed text-slate-800" placeholder="Your parsed resume text will appear here. You can also edit it directly..."></textarea>
+          <textarea id="contextTextarea" rows="8" class="w-full text-xs font-mono p-3 bg-slate-950 border border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed text-slate-200 placeholder-slate-500" placeholder="Your parsed resume text will appear here. You can also paste your target job description, salary range, or key projects..."></textarea>
         </div>
       </div>
 
-      <div class="px-6 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-        <span id="contextSaveStatus" class="text-xs text-emerald-600 font-medium"></span>
+      <div class="px-6 py-3 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between">
+        <span id="contextSaveStatus" class="text-xs text-emerald-400 font-medium"></span>
         <div class="flex gap-2">
-          <button id="cancelContextBtn" class="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-100">Cancel</button>
-          <button id="saveContextBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition">Save Context</button>
+          <button id="cancelContextBtn" class="px-4 py-2 border border-slate-800 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition">Cancel</button>
+          <button id="saveContextBtn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition">Save Context</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- OTTER-STYLE LIVE SHARE MODAL -->
-  <div id="shareModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center hidden">
-    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden flex flex-col mx-4 animate-in fade-in zoom-in-95 duration-150">
-      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50/60 to-purple-50/40">
+  <!-- OTTER-STYLE LIVE SHARE MODAL (Dark Theme) -->
+  <div id="shareModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl border border-slate-800 overflow-hidden flex flex-col mx-4 animate-in fade-in zoom-in-95 duration-150">
+      <div class="px-5 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+          <div class="w-8 h-8 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-xs">
             <i data-lucide="share-2" class="w-4 h-4"></i>
           </div>
           <div>
-            <h3 class="font-bold text-slate-800 text-sm">Share Live Session</h3>
-            <p class="text-[11px] text-slate-500">Sub-150ms real-time spectator mirror</p>
+            <h3 class="font-bold text-white text-sm">Share Live Session</h3>
+            <p class="text-[11px] text-slate-400">Sub-150ms real-time spectator mirror</p>
           </div>
         </div>
-        <button id="closeShareModalBtn" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+        <button id="closeShareModalBtn" type="button" class="text-slate-400 hover:text-white p-1 rounded-lg">
           <i data-lucide="x" class="w-4 h-4"></i>
         </button>
       </div>
 
       <div class="p-5 space-y-4">
-        <!-- LockedIn AI-Style Standalone Stealth Companion Card -->
-        <div class="bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 border border-indigo-200 rounded-2xl p-4 text-xs space-y-2.5 shadow-2xs">
-          <div class="flex items-center justify-between">
-            <div class="font-bold text-slate-900 flex items-center gap-1.5 text-sm">
-              <i data-lucide="shield" class="w-4 h-4 text-indigo-600"></i>
-              <span>LockedIn-Style Stealth Companion</span>
-            </div>
-            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">Zero Install</span>
-          </div>
-          <p class="text-slate-600 text-xs leading-relaxed">
-            Run an independent, floating Q&A prompter window that stays locked at eye level and is invisible on Zoom/Teams screen-sharing.
-          </p>
-          <div class="bg-white/80 p-2 rounded-xl border border-indigo-100 space-y-1 text-[11px] text-slate-700">
-            <div>1. Click <strong>Download .bat</strong> (saves <code>planck-stealth.bat</code>).</div>
-            <div>2. Click <strong>"Start Listening"</strong> with call tab selected.</div>
-            <div>3. Double-click <code>planck-stealth.bat</code> to see realtime answers!</div>
-          </div>
-          <a href="/download/stealth" download="planck-stealth.bat" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-98 text-white font-bold py-2 rounded-xl shadow-xs flex items-center justify-center gap-2 transition text-xs">
-            <i data-lucide="download" class="w-3.5 h-3.5"></i>
-            <span>Download Stealth Companion (.bat)</span>
-          </a>
-        </div>
-
         <!-- Otter-style How It Works Card -->
-        <div class="bg-indigo-50/80 border border-indigo-100 rounded-xl p-3 text-xs space-y-1">
-          <div class="font-bold text-indigo-950 flex items-center gap-1.5">
-            <i data-lucide="zap" class="w-3.5 h-3.5 text-indigo-600"></i>
+        <div class="bg-purple-950/30 border border-purple-800/40 rounded-xl p-3 text-xs space-y-1">
+          <div class="font-bold text-purple-300 flex items-center gap-1.5">
+            <i data-lucide="zap" class="w-3.5 h-3.5 text-purple-400"></i>
             <span>How Live Sharing Works (Like Otter)</span>
           </div>
-          <p class="text-slate-600 text-[11px] leading-relaxed">
-            1. Click <strong>"Start Speaking"</strong> to talk into your microphone.<br>
+          <p class="text-slate-400 text-[11px] leading-relaxed">
+            1. Click <strong>"Start Speaking"</strong> to speak into your microphone.<br>
             2. Copy this link and send it to your partner or coach.<br>
             3. They will see your live speech and AI talking points appear in sub-150ms!
           </p>
@@ -393,42 +383,42 @@
 
         <!-- Live Link Box -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Live Spectator Link</label>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">Live Spectator Link</label>
           <div class="flex items-center gap-2">
-            <input id="shareLinkInput" type="text" readonly class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 select-all focus:outline-none focus:ring-2 focus:ring-indigo-500" value="" />
-            <button id="copyShareLinkBtn" type="button" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs shrink-0">
+            <input id="shareLinkInput" type="text" readonly class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 select-all focus:outline-none focus:ring-2 focus:ring-purple-500" value="" />
+            <button id="copyShareLinkBtn" type="button" class="bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs shrink-0">
               <i data-lucide="copy" class="w-3.5 h-3.5"></i>
               <span id="copyShareLinkText">Copy</span>
             </button>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1">Anyone with this link can watch your live conversation and AI talking points in real-time.</p>
+          <p class="text-[11px] text-slate-400 mt-1">Anyone with this link can watch your live speech and talking points in real-time.</p>
         </div>
 
         <!-- Optional Security PIN -->
-        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2">
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5">
-              <i data-lucide="lock" class="w-3.5 h-3.5 text-slate-500"></i>
-              <span class="text-xs font-bold text-slate-700">Protect with PIN (Optional)</span>
+              <i data-lucide="lock" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span class="text-xs font-bold text-slate-300">Protect with PIN (Optional)</span>
             </div>
             <span class="text-[10px] text-slate-400 font-mono">4-6 Digits</span>
           </div>
           <div class="flex items-center gap-2">
-            <input id="sharePinInput" type="text" maxlength="6" placeholder="Leave empty for public link or enter e.g. 1234" class="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono" />
-            <button id="savePinBtn" type="button" class="px-2.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition shrink-0">Set PIN</button>
+            <input id="sharePinInput" type="text" maxlength="6" placeholder="Leave empty for public link or enter e.g. 1234" class="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono" />
+            <button id="savePinBtn" type="button" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg transition shrink-0">Set PIN</button>
           </div>
-          <p id="pinSetStatus" class="text-[10px] text-emerald-600 font-medium hidden">PIN updated successfully.</p>
+          <p id="pinSetStatus" class="text-[10px] text-emerald-400 font-medium hidden">PIN updated successfully.</p>
         </div>
 
         <!-- Live Spectators Status -->
-        <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+        <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
           <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-            <span class="text-slate-600 font-medium">Status:</span>
-            <span id="shareSpectatorCountText" class="font-bold text-slate-800">0 spectators watching</span>
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span class="text-slate-400 font-medium">Status:</span>
+            <span id="shareSpectatorCountText" class="font-bold text-white">0 spectators watching</span>
           </div>
-          <a id="openSpectatorNewTab" href="#" target="_blank" class="text-indigo-600 hover:text-indigo-800 font-semibold text-xs flex items-center gap-1">
-            <span>Test Spectator Tab</span>
+          <a id="openSpectatorNewTab" href="#" target="_blank" class="text-purple-400 hover:text-purple-300 font-semibold text-xs flex items-center gap-1">
+            <span>Test Spectator View</span>
             <i data-lucide="external-link" class="w-3 h-3"></i>
           </a>
         </div>
@@ -436,7 +426,7 @@
     </div>
   </div>
 
-  <script src="/app.js?v=kinetic-2"></script>
+  <script src="/app.js?v=kinetic-3"></script>
   <script>
     lucide.createIcons();
   </script>

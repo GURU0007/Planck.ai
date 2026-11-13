@@ -115,34 +115,106 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function applyModeConfiguration(mode) {
-  if (!mode) return;
   const banner = document.getElementById('activeModeBanner');
   const badge = document.getElementById('activeModeBadge');
   const text = document.getElementById('activeModeText');
-  if (!banner || !badge || !text) return;
+  const downloadStealthHeaderBtn = document.getElementById('downloadStealthHeaderBtn');
+  const openStealthHudHeaderBtn = document.getElementById('openStealthHudHeaderBtn');
+  const openShareModalBtn = document.getElementById('openShareModalBtn');
+  const openContextBtn = document.getElementById('openContextBtn');
+  const audioSourceSelector = document.getElementById('audioSourceSelector');
+  const transcriptPaneTitle = document.getElementById('transcriptPaneTitle');
+  const talkingPointsHeaderLabel = document.getElementById('talkingPointsHeaderLabel');
+  const emptyPlaceholderText = document.getElementById('emptyPlaceholderText');
+  const paneTranscript = document.getElementById('paneTranscript');
+  const paneAnswers = document.getElementById('paneAnswers');
 
-  banner.classList.remove('hidden');
+  if (!mode) {
+    // Default / All-in-one general mode
+    if (audioSourceSelector) audioSourceSelector.classList.remove('hidden');
+    if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.remove('hidden');
+    if (openShareModalBtn) openShareModalBtn.classList.remove('hidden');
+    if (openContextBtn) openContextBtn.classList.remove('hidden');
+    return;
+  }
 
+  if (banner) banner.classList.remove('hidden');
+
+  // FIELD-SPECIFIC STRICT FILTERING: Hide unrelated buttons & features
   if (mode === 'recruiter') {
-    banner.className = 'px-4 sm:px-6 py-2 border-b bg-indigo-50 border-indigo-200 text-xs flex items-center justify-between shrink-0 shadow-xs';
-    badge.className = 'font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px] bg-indigo-600 text-white';
-    badge.textContent = 'Recruiter Helper';
-    text.textContent = 'Tailored for HR & screening phone calls (STAR method, compensation, background).';
+    // Recruiter Call Helper: Only resume/context & call audio
+    if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
+    if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
+    if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
+    if (openShareModalBtn) openShareModalBtn.classList.add('hidden');
+    if (openContextBtn) openContextBtn.classList.remove('hidden');
+
+    if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-indigo-950/60 border-indigo-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
+    if (badge) {
+      badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-indigo-600 text-white';
+      badge.textContent = 'Recruiter Helper';
+    }
+    if (text) text.textContent = 'Only Recruiter controls active. Focused on behavioral STAR answers, resume alignment, and compensation guidance.';
+    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Recruiter Questions & Call Audio';
+    if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400"></i> STAR Talking Points (Situation • Task • Action • Result)';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Recruiter Call Helper:</strong> Ready for recruiter screening. Upload your resume or job description via <strong>"Upload Resume"</strong>. As the recruiter speaks, instant STAR talking points stream in ~120ms.';
   } else if (mode === 'practice') {
-    banner.className = 'px-4 sm:px-6 py-2 border-b bg-purple-50 border-purple-200 text-xs flex items-center justify-between shrink-0 shadow-xs';
-    badge.className = 'font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px] bg-purple-600 text-white';
-    badge.textContent = 'Otter Practice';
-    text.textContent = 'Live word-by-word transcription active. Use "Share Live" to invite a spectator or coach.';
+    // Otter Practice: Only live transcription & live spectator sharing
+    if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
+    if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
+    if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
+    if (openContextBtn) openContextBtn.classList.add('hidden');
+    if (openShareModalBtn) openShareModalBtn.classList.remove('hidden');
+
+    // Widen transcript pane for reading comfort
+    if (paneTranscript && paneAnswers) {
+      paneTranscript.className = 'w-full h-[32vh] md:h-full md:w-3/5 border-b md:border-b-0 md:border-r border-slate-800/80 flex flex-col bg-slate-900/80 backdrop-blur-sm shrink-0 md:shrink overflow-hidden shadow-xs transition-all';
+      paneAnswers.className = 'w-full flex-1 min-h-0 md:h-full md:w-2/5 flex flex-col bg-slate-950/60 overflow-hidden';
+    }
+
+    if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-purple-950/60 border-purple-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
+    if (badge) {
+      badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-purple-600 text-white';
+      badge.textContent = 'Otter Practice';
+    }
+    if (text) text.textContent = 'Only Practice controls active. Live word-by-word streaming transcript & private Otter-style spectator link.';
+    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Otter Live Word-by-Word Transcript';
+    if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-400"></i> Mock Talking Points';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Otter Practice Mode:</strong> Click <strong>"Start Speaking"</strong> to rehearse answers aloud. Click <strong>"Share Live"</strong> to invite a mentor or peer to watch your real-time transcript mirror.';
   } else if (mode === 'stealth') {
-    banner.className = 'px-4 sm:px-6 py-2 border-b bg-emerald-50 border-emerald-200 text-xs flex items-center justify-between shrink-0 shadow-xs';
-    badge.className = 'font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px] bg-emerald-600 text-white';
-    badge.textContent = 'Stealth Expert';
-    text.textContent = '100% Invisible to screenshares. Tab audio captures ONLY the interviewer (zero mic echo).';
+    // Stealth Interview Expert: Only tab interceptor, launcher .bat & standalone HUD
+    if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
+    if (openShareModalBtn) openShareModalBtn.classList.add('hidden');
+    if (openContextBtn) openContextBtn.classList.add('hidden');
+    if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.remove('hidden');
+    if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.remove('hidden');
+
+    if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-emerald-950/60 border-emerald-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
+    if (badge) {
+      badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-600 text-white';
+      badge.textContent = 'Stealth Expert';
+    }
+    if (text) text.textContent = 'Only Stealth controls active. 100% Invisible to screenshare & Tab Audio only (zero candidate mic noise).';
+    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Interviewer Voice (Browser Tab Only)';
+    if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="shield" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400"></i> Stealth Technical Answers';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Stealth Mode:</strong> 100% invisible on Zoom, Teams & Meet. Click <strong>"Start Listening"</strong> with your interview tab selected. Only the interviewer is captured (your voice is excluded).';
   } else if (mode === 'twoway') {
-    banner.className = 'px-4 sm:px-6 py-2 border-b bg-blue-50 border-blue-200 text-xs flex items-center justify-between shrink-0 shadow-xs';
-    badge.className = 'font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px] bg-blue-600 text-white';
-    badge.textContent = '2-Way Voice';
-    text.textContent = 'Turn on your mobile speaker and microphone for hands-free natural conversational drills.';
+    // Normal Voice Speaking 2-Way: Clean hands-free conversational voice
+    if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
+    if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
+    if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
+    if (openShareModalBtn) openShareModalBtn.classList.add('hidden');
+    if (openContextBtn) openContextBtn.classList.add('hidden');
+
+    if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-blue-950/60 border-blue-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
+    if (badge) {
+      badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-blue-600 text-white';
+      badge.textContent = '2-Way Voice';
+    }
+    if (text) text.textContent = 'Only 2-Way Voice controls active. Turn on mobile/laptop speaker and converse naturally back and forth.';
+    if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Spoken Voice Dialogue';
+    if (talkingPointsHeaderLabel) talkingPointsHeaderLabel.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400"></i> AI Voice Response';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>2-Way Conversational Mode:</strong> Unmute your speakerphone. Tap <strong>"Start Speaking"</strong> and speak aloud. Planck listens and streams instant conversational responses.';
   }
 
   if (window.lucide) lucide.createIcons();
@@ -157,15 +229,15 @@ function setSource(source) {
 
   if (source === 'tab') {
     // 1. ORIGINAL INTERVIEW COPILOT: Google Voice / Call Audio Capture
-    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-semibold bg-white text-indigo-600 shadow-sm transition';
-    sourceMicBtn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition';
+    if (sourceTabBtn) sourceTabBtn.className = 'px-2.5 py-1 rounded-md font-semibold bg-indigo-600 text-white shadow-xs transition';
+    if (sourceMicBtn) sourceMicBtn.className = 'px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-white transition';
 
     if (!isRecording) {
-      toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+      toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition text-xs sm:text-sm shrink-0';
       toggleAudioBtn.innerHTML = '<i data-lucide="headphones" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Listening</span><span class="sm:hidden">Listen</span>';
     }
 
-    if (placeholderText) {
+    if (placeholderText && !window.location.search.includes('mode=')) {
       placeholderText.innerHTML = '<strong>Interviewer-Only Mode:</strong> Select your <strong>Google Meet, Zoom, or Call tab</strong> and click <strong>"Start Listening"</strong>. The AI listens <strong>ONLY to the interviewer</strong> (your own voice is excluded). Instant talking points will stream automatically.';
     }
     if (placeholderIcon) {
@@ -173,16 +245,16 @@ function setSource(source) {
     }
   } else {
     // 2. OTTER LIVE MODE: Microphone Speech & Instant Live Share
-    sourceMicBtn.className = 'px-3 py-1.5 rounded-md font-semibold bg-white text-indigo-600 shadow-sm transition';
-    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition';
+    if (sourceMicBtn) sourceMicBtn.className = 'px-2.5 py-1 rounded-md font-semibold bg-indigo-600 text-white shadow-xs transition';
+    if (sourceTabBtn) sourceTabBtn.className = 'px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-white transition';
 
     if (!isRecording) {
-      toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+      toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition text-xs sm:text-sm shrink-0';
       toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Speaking</span><span class="sm:hidden">Speak</span>';
     }
 
-    if (placeholderText) {
-      placeholderText.innerHTML = 'Click <strong>"Start Speaking"</strong> to talk into your microphone (Otter mode). Click <strong>"Share Live"</strong> to let others watch you speak in real-time.';
+    if (placeholderText && !window.location.search.includes('mode=')) {
+      placeholderText.innerHTML = '<strong>Microphone Mode:</strong> Click <strong>"Start Speaking"</strong> to speak into your microphone and view live transcriptions in ~120ms.';
     }
     if (placeholderIcon) {
       placeholderIcon.setAttribute('data-lucide', 'mic');
@@ -889,7 +961,7 @@ function handleWebSocketMessage(event) {
     answerContent.innerHTML = `
       <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 space-y-2 text-xs">
         <div class="font-bold flex items-center gap-1.5 text-sm">
-          <span>⏳</span> Groq Cooldown
+          <span>⏳</span> AI Rate Limit Cooldown
         </div>
         <p class="leading-relaxed">${escapeHtml(data.message)}</p>
         <p class="text-[11px] text-amber-700">Your token bucket resets automatically in ~15-20 seconds. Resume context has been optimized.</p>
@@ -931,18 +1003,18 @@ function renderLiveTranscript(text, isFinal, speakerId) {
 
   if (!activeBubble) {
     activeBubble = document.createElement('div');
-    activeBubble.className = 'bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 hover:bg-slate-100/60 transition';
+    activeBubble.className = 'bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2 hover:border-slate-700 transition shadow-xs';
     activeBubble.innerHTML = `
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+        <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
           <span class="bubble-dot w-1.5 h-1.5 rounded-full ${badgeColor} animate-ping"></span>
           <span class="bubble-speaker">${escapeHtml(speakerLabel)}...</span>
         </span>
         <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
       </div>
-      <p class="bubble-p text-sm text-slate-600 italic leading-relaxed"></p>
+      <p class="bubble-p text-sm text-slate-300 italic leading-relaxed"></p>
       <div class="bubble-actions pt-1 flex justify-end hidden">
-        <button class="manual-answer-btn text-[11px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md font-medium flex items-center gap-1 transition">
+        <button class="manual-answer-btn text-[11px] text-indigo-300 hover:text-white bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 px-2.5 py-1 rounded-lg font-medium flex items-center gap-1 transition">
           ⚡ Answer this question
         </button>
       </div>
@@ -1068,13 +1140,13 @@ function addToHistory(question, answer) {
   qaHistory.innerHTML = '';
   qaList.slice(0, 5).forEach((item, index) => {
     const card = document.createElement('div');
-    card.className = 'p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1 hover:border-indigo-300 cursor-pointer transition';
+    card.className = 'p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs space-y-1 hover:border-indigo-500/50 cursor-pointer transition shadow-xs';
     card.innerHTML = `
       <div class="flex justify-between items-center text-slate-400 text-[10px]">
-        <span class="font-bold text-indigo-600">Q#${qaList.length - index}</span>
+        <span class="font-bold text-indigo-400">Q#${qaList.length - index}</span>
         <span>${item.time}</span>
       </div>
-      <p class="font-semibold text-slate-800 truncate">"${escapeHtml(item.question)}"</p>
+      <p class="font-semibold text-slate-200 truncate">"${escapeHtml(item.question)}"</p>
     `;
     card.addEventListener('click', () => {
       detectedQuestionCard.classList.remove('hidden');
