@@ -257,7 +257,7 @@ wss.on('connection', (ws, req) => {
   let isGenerating = false;
   let turnDebounceTimer = null;
   let lastAnswerGeneratedTime = 0;
-  let clientGenerationMode = 'manual'; // Default to manual on-demand trigger!
+  let clientGenerationMode = 'auto'; // Default to AUTO: instantly answers interview questions!
 
   function startDeepgramSession() {
     if (ws.readyState !== WebSocket.OPEN) return;

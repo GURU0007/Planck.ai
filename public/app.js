@@ -5,7 +5,7 @@ let audioStream = null;
 let scriptProcessor = null;
 let isRecording = false;
 let currentSource = 'mic'; // Default to mic for easy initial testing!
-let generationMode = 'manual'; // 'manual' (default on-demand) | 'auto' (1s pause)
+let generationMode = 'auto'; // Default to AUTO real-time AI answer generation!
 let currentAnswer = '';
 let activeQuestionText = '';
 let lastTranscriptText = '';
@@ -110,6 +110,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   setSource(initialSource);
+  setGenerationMode('auto');
   checkApiStatus();
   loadContext();
   setupEventListeners();
