@@ -776,12 +776,17 @@ async function startRecording() {
             autoGainControl: false,
           }
         });
-        // Stop unwanted video track immediately
-        audioStream.getVideoTracks().forEach(t => t.stop());
+        // Keep video track active so Chromium keeps audio pipeline running continuously
         const audioTracks = audioStream.getAudioTracks();
         if (audioTracks.length === 0) {
           throw new Error('NO_TAB_AUDIO');
         }
+        audioStream.getTracks().forEach(track => {
+          track.onended = () => {
+            console.log('[Audio] Capture track ended by user');
+            stopRecording();
+          };
+        });
       } catch (err) {
         if (err.message === 'NO_TAB_AUDIO') {
           alert("Google Voice tab audio was not shared! When selecting your Google Voice or Meeting tab in the browser popup, make sure the checkbox 'Also share tab audio' (at bottom-left) is checked.");

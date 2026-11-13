@@ -175,9 +175,9 @@
 
       <!-- Quick Step Instruction Banner -->
       <div id="liveStepGuide" class="mt-2.5 pt-2.5 border-t border-slate-800/80 text-[11px] text-slate-300 flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-1.5">
+        <div class="flex items-center gap-1.5 flex-wrap">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-          <span>Click <strong>"Capture Google Meet Audio"</strong> above &bull; Pick your Google Meet tab &bull; Check <em>"Also share tab audio"</em></span>
+          <span>Click <strong>"Capture Google Meet Audio"</strong> &bull; Select <strong>"Entire Screen"</strong> (check <em>"Share system audio"</em>) or <strong>"Chrome Tab"</strong> (check <em>"Also share tab audio"</em>) &bull; <span class="text-emerald-300 font-semibold">Works with earphones</span></span>
         </div>
         <button id="guideCaptureBtn" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition">
           Start Capture
@@ -852,15 +852,21 @@
           }
         });
 
-        // Immediately drop video tracks to preserve CPU & bandwidth
-        liveAudioStream.getVideoTracks().forEach(t => t.stop());
-
+        // Keep video track active without rendering it so Chromium does not kill the audio pipeline
         const audioTracks = liveAudioStream.getAudioTracks();
         if (audioTracks.length === 0) {
-          alert("Google Meet audio was not shared!\n\nWhen selecting your Google Meet tab in the browser popup, make sure the checkbox 'Also share tab audio' (at bottom-left) is checked.");
+          alert("Audio was not shared!\n\nWhen selecting 'Entire Screen' or 'Chrome Tab' in the popup, make sure to check the box 'Share system audio' / 'Also share tab audio'.");
           stopLiveCapture();
           return;
         }
+
+        // Listen for user clicking 'Stop sharing' on Chrome's floating bar
+        liveAudioStream.getTracks().forEach(track => {
+          track.onended = () => {
+            console.log('[Live Capture] Track ended by user');
+            stopLiveCapture();
+          };
+        });
 
         liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         await liveAudioCtx.resume();
@@ -979,9 +985,9 @@
 
       if (liveStepGuide) {
         liveStepGuide.innerHTML = `
-          <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-1.5 flex-wrap">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span>Click <strong>"Capture Google Meet Audio"</strong> above &bull; Pick your Google Meet tab &bull; Check <em>"Also share tab audio"</em></span>
+            <span>Click <strong>"Capture Google Meet Audio"</strong> &bull; Select <strong>"Entire Screen"</strong> (check <em>"Share system audio"</em>) or <strong>"Chrome Tab"</strong> (check <em>"Also share tab audio"</em>) &bull; <span class="text-emerald-300 font-semibold">Works with earphones &amp; headphones</span></span>
           </div>
           <button id="guideCaptureBtn" onclick="document.getElementById('liveCaptureMeetBtn').click()" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold px-2.5 py-1 rounded-md text-[11px] transition">
             Start Capture
