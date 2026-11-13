@@ -171,7 +171,12 @@ function applyModeConfiguration(mode) {
     const mobileBottomBar = document.getElementById('mobileBottomBar');
     if (mobileBottomBar) mobileBottomBar.classList.add('hidden');
 
+    // STRICTLY DISABLE & HIDE TAB AUDIO FOR OTTER
     if (audioSourceSelector) audioSourceSelector.classList.add('hidden');
+    if (sourceTabBtn) {
+      sourceTabBtn.disabled = true;
+      sourceTabBtn.classList.add('hidden');
+    }
     if (downloadStealthHeaderBtn) downloadStealthHeaderBtn.classList.add('hidden');
     if (openStealthHudHeaderBtn) openStealthHudHeaderBtn.classList.add('hidden');
     if (openContextBtn) openContextBtn.classList.add('hidden');
@@ -188,17 +193,24 @@ function applyModeConfiguration(mode) {
       transcriptContainer.className = 'flex-1 p-4 sm:p-8 overflow-y-auto space-y-4 max-w-2xl sm:max-w-3xl mx-auto w-full';
     }
 
-    // FORCE SOURCE TO MICROPHONE ONLY (NO TAB AUDIO)
+    // FORCE SOURCE TO MICROPHONE ONLY (TAB AUDIO DISABLED)
+    currentSource = 'mic';
     setSource('mic');
+
+    // Microphone only - Just start speaking is enough
+    if (!isRecording) {
+      toggleAudioBtn.className = 'bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-md shadow-purple-600/25 transition text-xs sm:text-sm shrink-0';
+      toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-4 h-4 text-white"></i><span>Start Speaking</span>';
+    }
 
     if (banner) banner.className = 'relative z-20 px-4 sm:px-6 py-2 border-b bg-purple-950/60 border-purple-800/60 text-xs flex items-center justify-between shrink-0 shadow-xs';
     if (badge) {
       badge.className = 'font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full text-[10px] bg-purple-600 text-white';
       badge.textContent = 'Otter Practice';
     }
-    if (text) text.textContent = 'Single centered screen active (like participant view). Transcribing microphone only. Click "Share Live" to mirror with a spectator.';
+    if (text) text.textContent = 'Tab audio disabled. Microphone only — just click "Start Speaking" and speak. Text is centered on a single screen.';
     if (transcriptPaneTitle) transcriptPaneTitle.textContent = 'Otter Live Speech Transcription';
-    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Otter Practice Mode:</strong> Tap <strong>"Start Speaking"</strong> to begin transcribing your microphone. Spoken speech appears centered in the middle of the screen. Click <strong>"Share Live"</strong> above to mirror this session.';
+    if (emptyPlaceholderText) emptyPlaceholderText.innerHTML = '<strong>Otter Practice Mode:</strong> Tab audio is disabled. Simply click <strong>"Start Speaking"</strong> with your microphone. Spoken words stream in real-time centered in the middle of the screen. Click <strong>"Share Live"</strong> above to mirror this session.';
   } else if (mode === 'stealth') {
     // Interview Copilot (Stealth): Only tab interceptor, launcher .bat & standalone HUD
     if (paneAnswers) paneAnswers.classList.remove('hidden');
@@ -672,6 +684,12 @@ async function startRecording() {
   try {
     console.log('[Audio] Requesting user media...');
 
+    // Guarantee that Otter mode strictly uses microphone only (tab audio disabled)
+    const currentMode = new URLSearchParams(window.location.search).get('mode');
+    if (currentMode === 'practice') {
+      currentSource = 'mic';
+    }
+
     // 1. Capture audio based on user selection
     if (currentSource === 'tab') {
       try {
@@ -832,11 +850,17 @@ function setupAudioProcessing() {
 
   // Update UI to recording state
   isRecording = true;
-  toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
-  if (currentSource === 'tab') {
-    toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Listening</span><span class="sm:hidden">Stop</span>';
+  const currentMode = new URLSearchParams(window.location.search).get('mode');
+  if (currentMode === 'practice') {
+    toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-500 text-white font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-md shadow-rose-600/25 transition active:scale-95 text-xs sm:text-sm shrink-0';
+    toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-white"></i><span>Stop Speaking</span>';
   } else {
-    toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Speaking</span><span class="sm:hidden">Stop</span>';
+    toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+    if (currentSource === 'tab') {
+      toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Listening</span><span class="sm:hidden">Stop</span>';
+    } else {
+      toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Speaking</span><span class="sm:hidden">Stop</span>';
+    }
   }
   recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping';
   lucide.createIcons();
@@ -878,11 +902,17 @@ function stopRecording() {
   }
 
   // Reset UI
-  toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
-  if (currentSource === 'tab') {
-    toggleAudioBtn.innerHTML = '<i data-lucide="headphones" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Listening</span><span class="sm:hidden">Listen</span>';
+  const currentMode = new URLSearchParams(window.location.search).get('mode');
+  if (currentMode === 'practice') {
+    toggleAudioBtn.className = 'bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-md shadow-purple-600/25 transition text-xs sm:text-sm shrink-0';
+    toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-4 h-4 text-white"></i><span>Start Speaking</span>';
   } else {
-    toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Speaking</span><span class="sm:hidden">Speak</span>';
+    toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+    if (currentSource === 'tab') {
+      toggleAudioBtn.innerHTML = '<i data-lucide="headphones" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Listening</span><span class="sm:hidden">Listen</span>';
+    } else {
+      toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Speaking</span><span class="sm:hidden">Speak</span>';
+    }
   }
   recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
   audioMeterText.textContent = '0 dB';
