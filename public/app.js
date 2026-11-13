@@ -87,11 +87,20 @@ if (window.pdfjsLib) {
 // 1. Initial Checks & Setup
 window.addEventListener('DOMContentLoaded', () => {
   // Mobile check: force Mic mode, hide tab sharing (not supported on mobile OS)
+  const urlParams = new URLSearchParams(window.location.search);
+  const modeParam = urlParams.get('mode');
+
   let initialSource = 'tab'; // Default to original Google Voice / Call testing mode on desktop!
-  try {
-    const saved = localStorage.getItem('planck_audio_source');
-    if (saved === 'mic' || saved === 'tab') initialSource = saved;
-  } catch (e) {}
+  if (modeParam === 'practice' || modeParam === 'twoway') {
+    initialSource = 'mic';
+  } else if (modeParam === 'stealth') {
+    initialSource = 'tab';
+  } else {
+    try {
+      const saved = localStorage.getItem('planck_audio_source');
+      if (saved === 'mic' || saved === 'tab') initialSource = saved;
+    } catch (e) {}
+  }
 
   if (isMobile()) {
     initialSource = 'mic';
@@ -102,7 +111,42 @@ window.addEventListener('DOMContentLoaded', () => {
   checkApiStatus();
   loadContext();
   setupEventListeners();
+  applyModeConfiguration(modeParam);
 });
+
+function applyModeConfiguration(mode) {
+  if (!mode) return;
+  const banner = document.getElementById('activeModeBanner');
+  const badge = document.getElementById('activeModeBadge');
+  const text = document.getElementById('activeModeText');
+  if (!banner || !badge || !text) return;
+
+  banner.classList.remove('hidden');
+
+  if (mode === 'recruiter') {
+    banner.className = 'px-4 sm:px-6 py-2 border-b bg-indigo-50 border-indigo-200 text-xs flex items-center justify-between shrink-0 shadow-xs';
+    badge.className = 'font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px] bg-indigo-600 text-white';
+    badge.textContent = 'Recruiter Helper';
+    text.textContent = 'Tailored for HR & screening phone calls (STAR method, compensation, background).';
+  } else if (mode === 'practice') {
+    banner.className = 'px-4 sm:px-6 py-2 border-b bg-purple-50 border-purple-200 text-xs flex items-center justify-between shrink-0 shadow-xs';
+    badge.className = 'font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px] bg-purple-600 text-white';
+    badge.textContent = 'Otter Practice';
+    text.textContent = 'Live word-by-word transcription active. Use "Share Live" to invite a spectator or coach.';
+  } else if (mode === 'stealth') {
+    banner.className = 'px-4 sm:px-6 py-2 border-b bg-emerald-50 border-emerald-200 text-xs flex items-center justify-between shrink-0 shadow-xs';
+    badge.className = 'font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px] bg-emerald-600 text-white';
+    badge.textContent = 'Stealth Expert';
+    text.textContent = '100% Invisible to screenshares. Tab audio captures ONLY the interviewer (zero mic echo).';
+  } else if (mode === 'twoway') {
+    banner.className = 'px-4 sm:px-6 py-2 border-b bg-blue-50 border-blue-200 text-xs flex items-center justify-between shrink-0 shadow-xs';
+    badge.className = 'font-bold uppercase tracking-wider px-2 py-0.5 rounded-full text-[10px] bg-blue-600 text-white';
+    badge.textContent = '2-Way Voice';
+    text.textContent = 'Turn on your mobile speaker and microphone for hands-free natural conversational drills.';
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
 
 function setSource(source) {
   currentSource = source;
