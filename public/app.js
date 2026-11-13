@@ -126,11 +126,11 @@ function setSource(source) {
 
   if (source === 'tab') {
     // 1. ORIGINAL INTERVIEW COPILOT: Google Voice / Call Audio Capture
-    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-semibold bg-white text-indigo-600 shadow-sm transition';
-    sourceMicBtn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition';
+    sourceTabBtn.className = 'px-3.5 py-1.5 rounded-xl font-medium bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition';
+    sourceMicBtn.className = 'px-3.5 py-1.5 rounded-xl font-medium text-[#86868b] hover:text-[#1d1d1f] transition';
 
     if (!isRecording) {
-      toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+      toggleAudioBtn.className = 'bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl flex items-center gap-1.5 shadow-[0_2px_8px_rgba(0,113,227,0.25)] transition active:scale-[0.98] text-xs sm:text-sm shrink-0';
       toggleAudioBtn.innerHTML = '<i data-lucide="headphones" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Listening</span><span class="sm:hidden">Listen</span>';
     }
 
@@ -142,11 +142,11 @@ function setSource(source) {
     }
   } else {
     // 2. OTTER LIVE MODE: Microphone Speech & Instant Live Share
-    sourceMicBtn.className = 'px-3 py-1.5 rounded-md font-semibold bg-white text-indigo-600 shadow-sm transition';
-    sourceTabBtn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-600 hover:text-slate-900 transition';
+    sourceMicBtn.className = 'px-3.5 py-1.5 rounded-xl font-medium bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition';
+    sourceTabBtn.className = 'px-3.5 py-1.5 rounded-xl font-medium text-[#86868b] hover:text-[#1d1d1f] transition';
 
     if (!isRecording) {
-      toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+      toggleAudioBtn.className = 'bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl flex items-center gap-1.5 shadow-[0_2px_8px_rgba(0,113,227,0.25)] transition active:scale-[0.98] text-xs sm:text-sm shrink-0';
       toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Speaking</span><span class="sm:hidden">Speak</span>';
     }
 
@@ -463,22 +463,22 @@ async function handleResumeFile(file) {
 function setGenerationMode(mode) {
   generationMode = mode;
   if (mode === 'manual') {
-    modeManualBtn.className = 'px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition';
-    modeAutoBtn.className = 'px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition';
+    modeManualBtn.className = 'px-3 py-1 rounded-lg font-medium bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition';
+    modeAutoBtn.className = 'px-3 py-1 rounded-lg font-medium text-[#86868b] hover:text-[#1d1d1f] transition';
     if (modeManualBtnMobile) {
-      modeManualBtnMobile.className = 'px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white shadow-xs transition';
+      modeManualBtnMobile.className = 'px-2.5 py-1.5 rounded-xl font-medium bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition';
     }
     if (modeAutoBtnMobile) {
-      modeAutoBtnMobile.className = 'px-2.5 py-1.5 rounded-lg font-bold text-slate-500 hover:text-slate-800 transition';
+      modeAutoBtnMobile.className = 'px-2.5 py-1.5 rounded-xl font-medium text-[#86868b] transition';
     }
   } else {
-    modeAutoBtn.className = 'px-2.5 py-1 rounded font-medium bg-indigo-600 text-white shadow-xs transition';
-    modeManualBtn.className = 'px-2.5 py-1 rounded font-medium text-slate-500 hover:text-slate-800 transition';
+    modeAutoBtn.className = 'px-3 py-1 rounded-lg font-medium bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition';
+    modeManualBtn.className = 'px-3 py-1 rounded-lg font-medium text-[#86868b] hover:text-[#1d1d1f] transition';
     if (modeAutoBtnMobile) {
-      modeAutoBtnMobile.className = 'px-2.5 py-1.5 rounded-lg font-bold bg-indigo-600 text-white shadow-xs transition';
+      modeAutoBtnMobile.className = 'px-2.5 py-1.5 rounded-xl font-medium bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)] transition';
     }
     if (modeManualBtnMobile) {
-      modeManualBtnMobile.className = 'px-2.5 py-1.5 rounded-lg font-bold text-slate-500 hover:text-slate-800 transition';
+      modeManualBtnMobile.className = 'px-2.5 py-1.5 rounded-xl font-medium text-[#86868b] transition';
     }
   }
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -622,10 +622,10 @@ function setTtsSpeed(speed) {
 function updateTtsUi() {
   if (ttsToggleBtn) {
     if (ttsEnabled) {
-      ttsToggleBtn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-emerald-600 text-white shadow-xs';
+      ttsToggleBtn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition bg-emerald-500/10 text-emerald-800 border border-emerald-500/20';
       if (ttsToggleBtnText) ttsToggleBtnText.textContent = 'Whisper: ON';
     } else {
-      ttsToggleBtn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition bg-slate-200 text-slate-700 hover:bg-slate-300 shadow-2xs';
+      ttsToggleBtn.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition bg-black/[0.04] text-[#424245] hover:bg-black/[0.08]';
       if (ttsToggleBtnText) ttsToggleBtnText.textContent = 'Whisper: OFF';
     }
   }
@@ -635,9 +635,9 @@ function updateTtsUi() {
   speedButtons.forEach(btn => {
     const spd = parseFloat(btn.getAttribute('data-speed'));
     if (Math.abs(spd - ttsSpeed) < 0.05) {
-      btn.className = 'tts-speed-btn px-2 py-0.5 rounded bg-indigo-600 text-white shadow-xs font-bold transition';
+      btn.className = 'tts-speed-btn px-2 py-0.5 rounded-lg bg-white text-[#1d1d1f] shadow-[0_1px_3px_rgba(0,0,0,0.08)] font-semibold transition';
     } else {
-      btn.className = 'tts-speed-btn px-2 py-0.5 rounded text-slate-600 hover:text-slate-900 transition';
+      btn.className = 'tts-speed-btn px-2 py-0.5 rounded-lg text-[#86868b] hover:text-[#1d1d1f] transition';
     }
   });
 
@@ -896,13 +896,13 @@ function setupAudioProcessing() {
 
   // Update UI to recording state
   isRecording = true;
-  toggleAudioBtn.className = 'bg-rose-600 hover:bg-rose-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+  toggleAudioBtn.className = 'bg-[#ff3b30] hover:bg-[#e0352b] text-white font-medium px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl flex items-center gap-1.5 shadow-[0_2px_8px_rgba(255,59,48,0.25)] transition active:scale-[0.98] text-xs sm:text-sm shrink-0';
   if (currentSource === 'tab') {
     toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Listening</span><span class="sm:hidden">Stop</span>';
   } else {
     toggleAudioBtn.innerHTML = '<i data-lucide="square" class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white"></i><span class="hidden sm:inline">Stop Speaking</span><span class="sm:hidden">Stop</span>';
   }
-  recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping';
+  recordingIndicator.className = 'w-2 h-2 rounded-full bg-[#34c759] shadow-[0_0_6px_rgba(52,199,89,0.8)] animate-ping';
   lucide.createIcons();
 
   audioStream.getTracks()[0].onended = () => {
@@ -943,13 +943,13 @@ function stopRecording() {
   }
 
   // Reset UI
-  toggleAudioBtn.className = 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg flex items-center gap-1.5 shadow-sm transition active:scale-95 text-xs sm:text-sm shrink-0';
+  toggleAudioBtn.className = 'bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-2xl flex items-center gap-1.5 shadow-[0_2px_8px_rgba(0,113,227,0.25)] transition active:scale-[0.98] text-xs sm:text-sm shrink-0';
   if (currentSource === 'tab') {
     toggleAudioBtn.innerHTML = '<i data-lucide="headphones" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Listening</span><span class="sm:hidden">Listen</span>';
   } else {
     toggleAudioBtn.innerHTML = '<i data-lucide="mic" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i><span class="hidden sm:inline">Start Speaking</span><span class="sm:hidden">Speak</span>';
   }
-  recordingIndicator.className = 'w-2.5 h-2.5 rounded-full bg-slate-400';
+  recordingIndicator.className = 'w-2 h-2 rounded-full bg-slate-300';
   audioMeterText.textContent = '0 dB';
   interimBar.classList.add('hidden');
   lucide.createIcons();
@@ -1005,8 +1005,8 @@ function handleWebSocketMessage(event) {
     detectedQuestionText.textContent = `"${data.question}"`;
     document.getElementById('questionTime').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    answerStatusBadge.className = 'text-[11px] bg-indigo-100 text-indigo-700 font-semibold px-2 py-0.5 rounded-full animate-pulse';
-    answerStatusBadge.textContent = '⚡ Streaming Answer (~120ms)...';
+    answerStatusBadge.className = 'text-[11px] bg-[#0071e3]/10 text-[#0071e3] font-medium px-2.5 py-0.5 rounded-full animate-pulse';
+    answerStatusBadge.textContent = 'Streaming Answer (~120ms)...';
     answerContent.innerHTML = '';
     copyAnswerBtn.disabled = true;
   }
@@ -1018,8 +1018,8 @@ function handleWebSocketMessage(event) {
   }
 
   if (data.type === 'answer_done') {
-    answerStatusBadge.className = 'text-[11px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full';
-    answerStatusBadge.textContent = '✓ Ready to Speak';
+    answerStatusBadge.className = 'text-[11px] bg-emerald-500/10 text-emerald-800 font-medium px-2.5 py-0.5 rounded-full';
+    answerStatusBadge.textContent = 'Ready to Speak';
     copyAnswerBtn.disabled = false;
 
     addToHistory(activeQuestionText, currentAnswer);
@@ -1031,15 +1031,15 @@ function handleWebSocketMessage(event) {
   }
 
   if (data.type === 'answer_error' || data.type === 'system_error') {
-    answerStatusBadge.className = 'text-[11px] bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full';
+    answerStatusBadge.className = 'text-[11px] bg-amber-500/10 text-amber-800 font-medium px-2.5 py-0.5 rounded-full';
     answerStatusBadge.textContent = 'Cooldown Active';
     answerContent.innerHTML = `
-      <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 space-y-2 text-xs">
-        <div class="font-bold flex items-center gap-1.5 text-sm">
-          <span>⏳</span> Groq Cooldown
+      <div class="bg-amber-500/10 border border-amber-500/20 text-amber-950 rounded-2xl p-4 space-y-2 text-xs">
+        <div class="font-semibold flex items-center gap-1.5 text-sm">
+          <span>Groq Cooldown</span>
         </div>
         <p class="leading-relaxed">${escapeHtml(data.message)}</p>
-        <p class="text-[11px] text-amber-700">Your token bucket resets automatically in ~15-20 seconds. Resume context has been optimized.</p>
+        <p class="text-[11px] text-amber-800">Your token bucket resets automatically in ~15-20 seconds. Resume context has been optimized.</p>
       </div>
     `;
   }
@@ -1053,17 +1053,17 @@ function renderLiveTranscript(text, isFinal, speakerId) {
   emptyPlaceholder.classList.add('hidden');
 
   let speakerLabel = 'Speaker';
-  let badgeColor = 'bg-indigo-500';
+  let badgeColor = 'bg-[#0071e3]';
 
   if (currentSource === 'tab') {
     speakerLabel = 'Interviewer (Google Voice)';
-    badgeColor = 'bg-indigo-600';
+    badgeColor = 'bg-[#0071e3]';
   } else if (speakerId !== null && speakerId !== undefined) {
     speakerLabel = `Speaker ${speakerId + 1}`;
-    badgeColor = speakerId % 2 === 0 ? 'bg-indigo-500' : 'bg-emerald-500';
+    badgeColor = speakerId % 2 === 0 ? 'bg-[#0071e3]' : 'bg-[#34c759]';
   } else {
     speakerLabel = 'You (Speaker)';
-    badgeColor = 'bg-indigo-500';
+    badgeColor = 'bg-[#0071e3]';
   }
 
   const now = Date.now();
@@ -1078,19 +1078,19 @@ function renderLiveTranscript(text, isFinal, speakerId) {
 
   if (!activeBubble) {
     activeBubble = document.createElement('div');
-    activeBubble.className = 'bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 hover:bg-slate-100/60 transition';
+    activeBubble.className = 'bg-[#fbfbfd] hover:bg-white border border-black/[0.06] rounded-2xl p-4 space-y-2 shadow-[0_1px_4px_rgba(0,0,0,0.02)] transition';
     activeBubble.innerHTML = `
       <div class="flex items-center justify-between">
-        <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-          <span class="bubble-dot w-1.5 h-1.5 rounded-full ${badgeColor} animate-ping"></span>
+        <span class="text-xs font-semibold text-[#1d1d1f] flex items-center gap-1.5">
+          <span class="bubble-dot w-1.5 h-1.5 rounded-full ${badgeColor} shadow-[0_0_4px_rgba(0,113,227,0.5)] animate-ping"></span>
           <span class="bubble-speaker">${escapeHtml(speakerLabel)}...</span>
         </span>
-        <span class="text-[10px] text-slate-400 font-mono">${timeStr}</span>
+        <span class="text-[10px] text-[#86868b] font-mono">${timeStr}</span>
       </div>
-      <p class="bubble-p text-sm text-slate-600 italic leading-relaxed"></p>
+      <p class="bubble-p text-sm text-[#86868b] italic leading-relaxed"></p>
       <div class="bubble-actions pt-1 flex justify-end hidden">
-        <button class="manual-answer-btn text-[11px] text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-md font-medium flex items-center gap-1 transition">
-          ⚡ Answer this question
+        <button class="manual-answer-btn text-[11px] text-[#0071e3] hover:text-[#0077ed] bg-[#0071e3]/10 hover:bg-[#0071e3]/15 px-2.5 py-1 rounded-xl font-medium flex items-center gap-1 transition">
+          Answer this question
         </button>
       </div>
     `;
@@ -1119,13 +1119,13 @@ function renderLiveTranscript(text, isFinal, speakerId) {
   if (!isFinal) {
     // Live in-progress speech (instant word prompt with pulsing cursor)
     if (bubbleP) {
-      bubbleP.innerHTML = `${escapeHtml(fullText)}<span class="inline-block w-1.5 h-3 bg-indigo-500 ml-1 animate-pulse"></span>`;
+      bubbleP.innerHTML = `${escapeHtml(fullText)}<span class="inline-block w-1.5 h-3.5 bg-[#0071e3] ml-1.5 animate-pulse rounded-full align-middle"></span>`;
     }
   } else {
     // Solid text containing this finalized question
     if (bubbleP) {
       bubbleP.textContent = fullText;
-      bubbleP.className = 'bubble-p text-sm text-slate-800 leading-relaxed font-medium';
+      bubbleP.className = 'bubble-p text-sm text-[#1d1d1f] leading-relaxed font-medium';
     }
     if (bubbleDot) bubbleDot.classList.remove('animate-ping');
     if (bubbleSpeaker) bubbleSpeaker.textContent = speakerLabel;
@@ -1162,7 +1162,7 @@ function renderFormattedAnswer(text) {
   }
 
   // 1. Convert markdown bold **word** to clean bold HTML tags
-  let cleaned = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-900">$1</strong>');
+  let cleaned = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-[#1d1d1f]">$1</strong>');
   cleaned = cleaned.replace(/\*(.*?)\*/g, '$1');
 
   // 2. Normalize whitespace and newlines (prevent multiple blank rows)
@@ -1176,9 +1176,9 @@ function renderFormattedAnswer(text) {
     const numMatch = line.match(/^(\d+)[.)]\s*(.*)/);
     if (numMatch) {
       return `
-        <div class="flex items-start gap-2.5 py-1.5 border-b border-slate-100/70 last:border-0">
-          <span class="shrink-0 w-5 h-5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-xs flex items-center justify-center border border-indigo-200/80 mt-0.5">${numMatch[1]}</span>
-          <div class="flex-1 text-slate-800 text-[13.5px] leading-snug">${numMatch[2]}</div>
+        <div class="flex items-start gap-2.5 py-1.5 border-b border-black/[0.04] last:border-0">
+          <span class="shrink-0 w-5 h-5 rounded-lg bg-black/[0.04] text-[#1d1d1f] font-semibold text-xs flex items-center justify-center border border-black/[0.05] mt-0.5">${numMatch[1]}</span>
+          <div class="flex-1 text-[#1d1d1f] text-[13.5px] leading-relaxed">${numMatch[2]}</div>
         </div>
       `;
     }
@@ -1186,17 +1186,17 @@ function renderFormattedAnswer(text) {
     if (line.startsWith('•') || line.startsWith('-')) {
       const content = line.replace(/^[•\-]\s*/, '');
       return `
-        <div class="flex items-start gap-2 py-1 text-slate-800 text-[13.5px] leading-snug">
-          <span class="text-indigo-600 font-bold leading-tight">•</span>
+        <div class="flex items-start gap-2 py-1 text-[#1d1d1f] text-[13.5px] leading-relaxed">
+          <span class="text-[#0071e3] font-bold leading-tight">•</span>
           <div class="flex-1">${content}</div>
         </div>
       `;
     }
     // Regular paragraph
-    return `<p class="text-slate-800 text-[13.5px] leading-snug py-1">${line}</p>`;
+    return `<p class="text-[#1d1d1f] text-[13.5px] leading-relaxed py-1">${line}</p>`;
   }).join('');
 
-  answerContent.innerHTML = formattedHtml || `<p class="text-xs text-slate-400 italic">Formatting answer...</p>`;
+  answerContent.innerHTML = formattedHtml || `<p class="text-xs text-[#86868b] italic">Formatting answer...</p>`;
 }
 
 // Add to previous Q&A turns
@@ -1206,13 +1206,13 @@ function addToHistory(question, answer) {
   qaHistory.innerHTML = '';
   qaList.slice(0, 5).forEach((item, index) => {
     const card = document.createElement('div');
-    card.className = 'p-2.5 bg-white border border-slate-200 rounded-lg text-xs space-y-1 hover:border-indigo-300 cursor-pointer transition';
+    card.className = 'p-3 bg-white border border-black/[0.06] rounded-2xl text-xs space-y-1 hover:border-[#0071e3]/40 cursor-pointer transition shadow-[0_1px_3px_rgba(0,0,0,0.02)]';
     card.innerHTML = `
-      <div class="flex justify-between items-center text-slate-400 text-[10px]">
-        <span class="font-bold text-indigo-600">Q#${qaList.length - index}</span>
+      <div class="flex justify-between items-center text-[#86868b] text-[10px]">
+        <span class="font-semibold text-[#0071e3]">Turn #${qaList.length - index}</span>
         <span>${item.time}</span>
       </div>
-      <p class="font-semibold text-slate-800 truncate">"${escapeHtml(item.question)}"</p>
+      <p class="font-medium text-[#1d1d1f] truncate">"${escapeHtml(item.question)}"</p>
     `;
     card.addEventListener('click', () => {
       detectedQuestionCard.classList.remove('hidden');
