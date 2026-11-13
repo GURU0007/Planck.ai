@@ -113,6 +113,12 @@
         <i data-lucide="headphones" class="w-3.5 h-3.5 text-indigo-600 shrink-0"></i>
         <span id="specWhisperText" class="hidden md:inline">Whisper: OFF</span>
       </button>
+
+      <!-- Always on Top Floating Pin (Document Picture-in-Picture) -->
+      <button id="pipFloatBtn" class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition shrink-0" title="Float window Always on Top above all apps">
+        <i data-lucide="pin" class="w-3 h-3 text-indigo-600"></i>
+        <span class="hidden sm:inline">Float</span>
+      </button>
     </div>
   </header>
 
@@ -759,6 +765,50 @@
       const utterance = new SpeechSynthesisUtterance(text.replace(/[*_#`-]/g, ''));
       utterance.rate = 1.25;
       window.speechSynthesis.speak(utterance);
+    }
+
+    // Floating Always on Top Window (Picture-in-Picture)
+    const pipFloatBtn = document.getElementById('pipFloatBtn');
+    if (pipFloatBtn) {
+      if (!('documentPictureInPicture' in window)) {
+        pipFloatBtn.style.display = 'none';
+      } else {
+        pipFloatBtn.addEventListener('click', async () => {
+          try {
+            const pipWindow = await window.documentPictureInPicture.requestWindow({
+              width: 580,
+              height: 640
+            });
+            // Copy all styles to PIP window
+            [...document.styleSheets].forEach((styleSheet) => {
+              try {
+                const cssRules = [...styleSheet.cssRules].map((rule) => rule.cssText).join('');
+                const style = document.createElement('style');
+                style.textContent = cssRules;
+                pipWindow.document.head.appendChild(style);
+              } catch (e) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.type = styleSheet.type;
+                link.media = styleSheet.media;
+                link.href = styleSheet.href;
+                pipWindow.document.head.appendChild(link);
+              }
+            });
+            // Move container into PIP window
+            pipWindow.document.body.className = document.body.className;
+            const qaContainer = document.getElementById('qaViewContainer');
+            if (qaContainer) {
+              pipWindow.document.body.appendChild(qaContainer);
+            }
+            pipWindow.addEventListener('pagehide', () => {
+              if (qaContainer) document.body.appendChild(qaContainer);
+            });
+          } catch (err) {
+            console.warn('[PiP] Document PiP failed:', err);
+          }
+        });
+      }
     }
 
     // Auto-connect

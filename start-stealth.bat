@@ -1,15 +1,12 @@
 @echo off
-title Planck.ai Stealth Copilot
-cd /d "%~dp0"
-echo ========================================================
-echo  [Planck.ai] Launching Invisible Stealth Q^&A Copilot...
-echo  - OS Capture Exclusion Active (WDA_EXCLUDEFROMCAPTURE)
-echo  - 100%% Invisible on Zoom, Teams ^& Google Meet!
-echo  - Press Ctrl+Shift+H to quickly toggle visibility
-echo  - Press Ctrl+Shift+Q to quit
-echo ========================================================
-if exist ".\node_modules\electron\dist\electron.exe" (
-    .\node_modules\electron\dist\electron.exe stealth-overlay.js
+title Planck.ai Copilot
+cd /d "C:\Users\gurus\realtime-voice-copilot"
+
+if exist "C:\Program Files\Google\Chrome\Application\chrome.exe" (
+    start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --app="http://localhost:3000/live?room=main_room" --window-size=560,640
+) else if exist "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" (
+    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --app="http://localhost:3000/live?room=main_room" --window-size=560,640
 ) else (
-    npx electron stealth-overlay.js
+    start "" http://localhost:3000/live?room=main_room
 )
+exit
