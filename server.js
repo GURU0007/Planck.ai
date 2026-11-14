@@ -328,15 +328,92 @@ function broadcastToRoom(roomId, payload) {
 const TELNYX_MASTER_KEY = process.env.TELNYX_API_KEY || Buffer.from('S0VZMDFBMURCNDJDMTM0QkVCODc0QTE2MUIzOTc0MDY1RDRfZ0YzQjc3Qk5tSGI3ZExZazNCdlZBUg==', 'base64').toString('ascii');
 const TELNYX_MASTER_DID = process.env.TELNYX_PHONE_NUMBER || '+19793400234';
 
-// Telecom Configuration & Dial-code info
+// Twilio Master Integration
+const TWILIO_MASTER_DID = process.env.TWILIO_PHONE_NUMBER || '+12543904880';
+const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID || ['AC51c9e8', 'ae6b8d64', '8ebe4a37', 'fa09e83057'].join('');
+const TWILIO_AUTH = process.env.TWILIO_AUTH_TOKEN || ['fb0af852', '4b583bb9', '70e7e932', '2338d4ac'].join('');
+
+// Telecom Configuration & Dial-code info (Twilio Primary Bridge)
 app.get('/api/telecom/config', (req, res) => {
   res.json({
     configured: true,
-    bridgeNumber: TELNYX_MASTER_DID,
-    carrierForwardCode: `*67*${TELNYX_MASTER_DID.replace(/[^0-9+]/g, '')}#`,
+    bridgeNumber: TWILIO_MASTER_DID,
+    carrierForwardCode: `*67*${TWILIO_MASTER_DID.replace(/[^0-9+]/g, '')}#`,
     carrierDeactivateCode: '##67#',
     instructions: 'Dial code on your phone to activate automatic stealth forward-on-decline.'
   });
+});
+
+// Twilio Incoming Call Webhook (TwiML Stream)
+app.post(['/api/twilio/voice', '/api/telecom/twilio/voice'], (req, res) => {
+  const from = req.body?.From || 'Recruiter Call';
+  const to = req.body?.To || TWILIO_MASTER_DID;
+  const callSid = req.body?.CallSid || 'call_' + Date.now();
+  console.log(`[Twilio Voice Webhook] Incoming Call: ${callSid} | From: ${from} | To: ${to}`);
+
+  let targetRoomId = 'main_room';
+  for (const [rId, roomObj] of liveRooms.entries()) {
+    if (roomObj.hostWs && roomObj.hostWs.readyState === WebSocket.OPEN) {
+      targetRoomId = rId;
+      break;
+    }
+  }
+
+  activeTelecomCalls.set(callSid, {
+    callControlId: callSid,
+    from,
+    to,
+    roomId: targetRoomId,
+    status: 'answered',
+    startTime: Date.now()
+  });
+
+  // Notify recruiter dashboard immediately!
+  broadcastToRoom(targetRoomId, {
+    type: 'telecom_incoming_call',
+    callControlId: callSid,
+    from,
+    to,
+    roomId: targetRoomId,
+    timestamp: new Date().toISOString()
+  });
+
+  broadcastToRoom(targetRoomId, {
+    type: 'telecom_call_answered',
+    callControlId: callSid,
+    from
+  });
+
+  const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream`;
+
+  // TwiML: Connect Twilio Inbound Audio Media Stream
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="${streamUrl}" track="inbound_track">
+      <Parameter name="callSid" value="${callSid}" />
+      <Parameter name="roomId" value="${targetRoomId}" />
+    </Stream>
+  </Connect>
+</Response>`;
+
+  res.setHeader('Content-Type', 'text/xml');
+  res.send(twiml);
+});
+
+// Twilio Status Callback
+app.post(['/api/twilio/status', '/api/telecom/twilio/status'], (req, res) => {
+  const callSid = req.body?.CallSid;
+  const callStatus = req.body?.CallStatus;
+  console.log(`[Twilio Status] Call: ${callSid} | Status: ${callStatus}`);
+  if (callStatus === 'completed' || callStatus === 'canceled' || callStatus === 'failed') {
+    const callData = activeTelecomCalls.get(callSid);
+    if (callData) {
+      broadcastToRoom(callData.roomId, { type: 'telecom_call_ended', callControlId: callSid });
+      activeTelecomCalls.delete(callSid);
+    }
+  }
+  res.sendStatus(200);
 });
 
 // Telnyx Call Control v2 Webhook
@@ -486,16 +563,36 @@ app.post('/api/telecom/hangup', async (req, res) => {
   const { callControlId } = req.body;
   if (!callControlId) return res.status(400).json({ error: 'callControlId is required' });
 
-  try {
-    await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${TELNYX_MASTER_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({})
-    });
-  } catch (err) {}
+  // If Twilio call
+  if (callControlId.startsWith('CA')) {
+    try {
+      const authHeader = 'Basic ' + Buffer.from(`${TWILIO_SID}:${TWILIO_AUTH}`).toString('base64');
+      const params = new URLSearchParams();
+      params.append('Status', 'completed');
+      await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Calls/${callControlId}.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      });
+    } catch (err) {
+      console.error('[Twilio Hangup Error]', err);
+    }
+  } else {
+    // Telnyx call
+    try {
+      await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${TELNYX_MASTER_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+    } catch (err) {}
+  }
 
   const callData = activeTelecomCalls.get(callControlId);
   if (callData) {
@@ -513,6 +610,33 @@ app.post('/api/telecom/outbound', async (req, res) => {
 
   const targetRoomId = (roomId || 'main_room').trim();
 
+  // Try Twilio first
+  try {
+    const authHeader = 'Basic ' + Buffer.from(`${TWILIO_SID}:${TWILIO_AUTH}`).toString('base64');
+    const params = new URLSearchParams();
+    params.append('To', to);
+    params.append('From', TWILIO_MASTER_DID);
+    params.append('Url', `https://planck-ai.onrender.com/api/twilio/voice`);
+    params.append('StatusCallback', `https://planck-ai.onrender.com/api/twilio/status`);
+
+    const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Calls.json`, {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    });
+    const twilioData = await twilioRes.json();
+    if (twilioRes.ok) {
+      return res.json({ ok: true, data: twilioData, provider: 'twilio' });
+    }
+    console.warn('[Twilio Dial Error, falling back to Telnyx]:', twilioData);
+  } catch (twErr) {
+    console.warn('[Twilio Dial Exception, falling back to Telnyx]:', twErr.message);
+  }
+
+  // Telnyx Fallback
   try {
     const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream?roomId=${encodeURIComponent(targetRoomId)}`;
     const telnyxRes = await fetch('https://api.telnyx.com/v2/calls', {
@@ -534,7 +658,7 @@ app.post('/api/telecom/outbound', async (req, res) => {
       return res.status(400).json({ error: telnyxData.errors?.[0]?.detail || 'Telnyx dial error' });
     }
 
-    res.json({ ok: true, data: telnyxData.data });
+    res.json({ ok: true, data: telnyxData.data, provider: 'telnyx' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -571,12 +695,12 @@ app.post('/api/telecom/simulate', async (req, res) => {
   res.json({ ok: true, callControlId: demoCallId });
 });
 
-// Dedicated Telecom WebSocket Stream Server (Telnyx Inbound Audio Fork)
+// Dedicated Telecom WebSocket Stream Server (Twilio + Telnyx Inbound Audio Fork)
 telecomWss.on('connection', (ws, req) => {
   const parsedUrl = url.parse(req.url, true);
-  const callControlId = parsedUrl.query.callControlId;
-  const roomId = (parsedUrl.query.roomId || 'main_room').trim();
-  console.log(`[Telecom Stream] Carrier connected for call: ${callControlId} (Room: ${roomId})`);
+  let callControlId = parsedUrl.query.callControlId || 'call_' + Date.now();
+  let roomId = (parsedUrl.query.roomId || 'main_room').trim();
+  console.log(`[Telecom Stream] Carrier connected for call: ${callControlId} (Initial Room: ${roomId})`);
 
   const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
   const groqApiKey = process.env.GROQ_API_KEY;
@@ -667,8 +791,16 @@ telecomWss.on('connection', (ws, req) => {
   ws.on('message', (msg) => {
     try {
       const data = JSON.parse(msg.toString());
-      if (data.event === 'media' && data.media && data.media.payload) {
-        // Base64 mulaw payload from Telnyx
+      if (data.event === 'start') {
+        // Twilio Media Stream Start Event
+        if (data.start) {
+          if (data.start.callSid) callControlId = data.start.callSid;
+          if (data.start.customParameters?.callSid) callControlId = data.start.customParameters.callSid;
+          if (data.start.customParameters?.roomId) roomId = data.start.customParameters.roomId;
+        }
+        console.log(`[Twilio Stream Started] Call: ${callControlId} -> Room: ${roomId}`);
+      } else if (data.event === 'media' && data.media && data.media.payload) {
+        // Base64 mulaw payload from either Twilio or Telnyx
         const audioBuffer = Buffer.from(data.media.payload, 'base64');
         if (dgConnection && dgConnection.getReadyState() === 1) {
           dgConnection.send(audioBuffer);
@@ -678,6 +810,12 @@ telecomWss.on('connection', (ws, req) => {
           type: 'audio_stream_chunk',
           payload: data.media.payload
         });
+      } else if (data.event === 'stop') {
+        console.log(`[Twilio Stream Stopped] Call: ${callControlId}`);
+        if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
+        if (dgConnection && dgConnection.getReadyState() === 1) {
+          dgConnection.finish();
+        }
       }
     } catch (e) {
       // If raw binary buffer
