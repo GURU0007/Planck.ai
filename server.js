@@ -53,18 +53,8 @@ app.get('/live', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live.html'));
 });
 
-// Download Standalone Native Stealth Executable (Full WDA_EXCLUDEFROMCAPTURE Screen-Share Immunity)
-app.get('/download/stealth-exe', (req, res) => {
-  const localZip = path.join(__dirname, 'dist', 'Planck-Stealth-Windows.zip');
-  if (fs.existsSync(localZip)) {
-    return res.download(localZip, 'Planck-Stealth-Windows.zip');
-  }
-  res.redirect('https://github.com/GURU0007/Planck.ai/releases/latest/download/Planck-Stealth-Windows.zip');
-});
-
-// Download Standalone Stealth Launcher (.bat for Windows, .command for Mac) configured for user's room
-app.get(['/download/stealth', '/download/stealth-win', '/download/stealth-mac'], (req, res) => {
-  // Always ensure end-users connect to production URL (not local development host)
+// Download Standalone Windows Stealth Launcher (.bat) configured for user's room
+app.get('/download/stealth', (req, res) => {
   let baseUrl = 'https://planck-ai.onrender.com';
   const reqHost = req.get('host') || '';
   if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1')) {
@@ -73,37 +63,6 @@ app.get(['/download/stealth', '/download/stealth-win', '/download/stealth-mac'],
   }
   const roomId = (req.query.room || 'main_room').trim();
   const targetUrl = `${baseUrl}/live?room=${encodeURIComponent(roomId)}`;
-  const isMac = req.query.os === 'mac' || req.path === '/download/stealth-mac';
-
-  if (isMac) {
-    const macContent = `#!/bin/bash
-# Planck.ai Stealth Copilot Launcher for macOS (Zero install required)
-TARGET_URL="${targetUrl}"
-
-echo "========================================================"
-echo " [Planck.ai] Launching Standalone Stealth Copilot..."
-echo " - Connecting to: $TARGET_URL"
-echo " - Distraction-free standalone app window"
-echo "========================================================"
-
-if [ -d "/Applications/Google Chrome.app" ]; then
-    open -na "Google Chrome" --args --app="$TARGET_URL" --window-size=580,640
-elif [ -d "/Applications/Microsoft Edge.app" ]; then
-    open -na "Microsoft Edge" --args --app="$TARGET_URL" --window-size=580,640
-elif [ -d "/Applications/Brave Browser.app" ]; then
-    open -na "Brave Browser" --args --app="$TARGET_URL" --window-size=580,640
-else
-    open "$TARGET_URL"
-fi
-
-# Close Terminal window cleanly
-osascript -e 'tell application "Terminal" to close first window' &>/dev/null &
-exit 0
-`;
-    res.setHeader('Content-Disposition', 'attachment; filename="planck-stealth.command"');
-    res.setHeader('Content-Type', 'application/x-sh');
-    return res.send(macContent);
-  }
 
   const batContent = `@echo off
 title Planck.ai Stealth Copilot

@@ -230,7 +230,7 @@
             </li>
             <li class="flex items-start gap-2">
               <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
-              <span><strong>1-Click Launchers:</strong> Preconfigured native launchers for Windows (.bat) &amp; Mac (.command).</span>
+              <span><strong>1-Click Windows Launcher:</strong> Preconfigured .bat launcher connects straight to production.</span>
             </li>
           </ul>
 
@@ -243,35 +243,22 @@
               <i id="icon-stealth" data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform"></i>
             </button>
             <div id="guide-stealth" class="hidden mt-3 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-2">
-              <p><strong>🛡️ 100% Stealth Guarantee (How it works):</strong></p>
-              <p><strong>Option A (Native Stealth .exe):</strong> Run <code>Planck-Stealth.exe</code>. It activates OS-level capture exclusion (<code>WDA_EXCLUDEFROMCAPTURE</code>). Google Meet and Zoom literally see through it even if you share your entire desktop!</p>
-              <p><strong>Option B (Web App / PWA):</strong> If using the web prompter, in Google Meet select <strong>"A Window"</strong> (your IDE) or <strong>"A Tab"</strong> (LeetCode). Meet only captures that target, making the prompter 100% invisible!</p>
+              <p><strong>1. Launch Copilot Window:</strong> Click <em>Launch Interview Copilot</em> to open the standalone HUD, or run <code>planck-stealth.bat</code> on Windows.</p>
+              <p><strong>2. Select Tab Audio:</strong> On your workspace, click <em>Capture Tab Audio</em> and select your interview tab (check <em>Share tab audio</em>).</p>
+              <p><strong>3. Answer Streaming:</strong> The floating HUD captures only the interviewer and displays real-time answers!</p>
             </div>
           </div>
         </div>
 
         <!-- Action Buttons -->
-        <div class="space-y-2 pt-2 border-t border-slate-800/80">
+        <div class="space-y-2.5 pt-2 border-t border-slate-800/80">
           <a href="/live?room=main_room" target="_blank" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-98 shadow-md shadow-emerald-600/20">
             <span>Launch Interview Copilot</span>
             <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
           </a>
-          <a href="/download/stealth-exe" class="w-full bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 hover:text-white py-2 px-3 rounded-xl text-xs font-bold text-center transition flex items-center justify-center gap-1.5 shadow-sm">
-            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-400"></i>
-            <span>Download Native Stealth App (.exe - Screen-Share Immune)</span>
+          <a href="/download/stealth" download="planck-stealth.bat" class="w-full bg-slate-800/80 hover:bg-slate-800 text-emerald-400 py-2.5 px-3 rounded-xl text-xs font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-700/60 shadow-xs">
+            <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Download Windows Launcher (.bat)
           </a>
-          <div class="grid grid-cols-2 gap-2">
-            <a href="/download/stealth?os=windows" download="planck-stealth.bat" class="bg-slate-800/80 hover:bg-slate-800 text-emerald-400 py-1.5 px-2 rounded-xl text-[11px] font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-700/60 shadow-xs">
-              <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Windows (.bat)
-            </a>
-            <a href="/download/stealth?os=mac" download="planck-stealth.command" class="bg-slate-800/80 hover:bg-slate-800 text-teal-300 py-1.5 px-2 rounded-xl text-[11px] font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-700/60 shadow-xs">
-              <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Mac (.command)
-            </a>
-          </div>
-          <button id="pwaLandingBtn" onclick="installLandingPwa()" class="w-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white py-1.5 px-2 rounded-xl text-[11px] font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-800">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
-            <span>Install Web App (PWA)</span>
-          </button>
         </div>
       </div>
 
@@ -343,8 +330,7 @@
         <a href="/app?mode=recruiter" class="hover:text-indigo-400 transition">Recruiter Helper</a>
         <a href="/app?mode=practice" class="hover:text-purple-400 transition">Otter Practice</a>
         <a href="/live?room=main_room" target="_blank" class="hover:text-emerald-400 transition">Interview Copilot</a>
-        <a href="/download/stealth?os=windows" class="hover:text-white transition">Windows (.bat)</a>
-        <a href="/download/stealth?os=mac" class="hover:text-white transition">Mac (.command)</a>
+        <a href="/download/stealth" class="hover:text-white transition">Download Launcher (.bat)</a>
       </div>
     </div>
   </footer>
@@ -483,7 +469,7 @@
                 <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">1</span>
                 <div>
                   <strong class="text-white">Launch the Standalone Copilot Window:</strong>
-                  <p class="text-slate-400 text-xs mt-0.5">Click <em>Launch Interview Copilot</em> (or run <code>planck-stealth.bat</code> on Windows / <code>planck-stealth.command</code> on Mac). It runs Google Chrome / Edge in standalone app mode with zero browser address bars or navigation clutter.</p>
+                  <p class="text-slate-400 text-xs mt-0.5">Click <em>Launch Interview Copilot</em> (or run <code>planck-stealth.bat</code>). It runs Google Chrome / Edge in standalone app mode with zero browser address bars or navigation clutter.</p>
                 </div>
               </div>
 
@@ -541,27 +527,6 @@
     document.getElementById('detailedGuideModal').addEventListener('click', (e) => {
       if (e.target.id === 'detailedGuideModal') closeDetailedGuideModal();
     });
-    // Service worker registration & PWA installation
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-
-    let landingDeferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      landingDeferredPrompt = e;
-    });
-
-    function installLandingPwa() {
-      if (landingDeferredPrompt) {
-        landingDeferredPrompt.prompt();
-        landingDeferredPrompt.userChoice.then(() => {
-          landingDeferredPrompt = null;
-        });
-      } else {
-        alert('To install Planck.ai as a desktop app:\n\n• On Chrome/Edge: Click the Install icon in your address bar (or Menu > "Install Planck.ai")\n• On Mac Safari: File > "Add to Dock"');
-      }
-    }
   </script>
 </body>
 </html>
