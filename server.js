@@ -336,18 +336,43 @@ const TWILIO_AUTH = process.env.TWILIO_AUTH_TOKEN || ['fb0af852', '4b583bb9', '7
 // Master Groq Client for fail-safe background and manual answers
 const masterGroq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
 
-// Manual AI Answer Trigger Endpoint (REST Fallback for 100% guarantee)
+// Manual AI Answer Trigger Endpoint (Dual WebSocket + REST Direct)
 app.post('/api/telecom/generate', async (req, res) => {
   const { text, roomId } = req.body;
   if (!text || !text.trim()) return res.status(400).json({ error: 'Text is required' });
   const targetRoomId = (roomId || 'main_room').trim();
   console.log(`[REST Trigger Answer] Generating for: "${text.substring(0, 80)}..." in room "${targetRoomId}"`);
 
+  // Start streaming over WebSocket to active room
   generateInstantAnswer(text, null, masterGroq, targetRoomId).catch(err => {
     console.error('[REST Trigger Error]', err);
   });
 
-  res.json({ ok: true, message: 'Generating answer stream' });
+  // Also generate and return complete answer directly in response for 100% guarantee!
+  try {
+    const completion = await masterGroq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an elite Staff Software Engineer providing instant, glanceable interview talking points for a live recruiter phone interview. The candidate will speak these points aloud over the phone.
+
+CRITICAL FORMAT REQUIREMENTS (FLUID SPOKEN PARAGRAPHS - STRICTLY ZERO BULLETS):
+1. IGNORE RECRUITER SMALL TALK & INTRODUCTIONS: Completely ignore filler greetings ("Hello", "How are you", "My name is..."). Focus 100% on answering the core technical question.
+2. ZERO BULLET POINTS, ZERO ASTERISKS, ZERO SECTION HEADERS: Absolutely NO bullets (•, -, *), NO asterisks (**), NO labels ("Situation:", "Action:"). Output ONLY 2 to 3 natural, fluid paragraphs separated by clean double line breaks.
+3. SPOKEN CONVERSATIONAL TONE: First-person ("In my experience", "I designed", "we implemented"). Length: 110 to 140 words total so the candidate can read aloud smoothly.`
+        },
+        { role: 'user', content: text }
+      ],
+      max_tokens: 320,
+      temperature: 0.25,
+    });
+    const answer = completion.choices[0]?.message?.content || '';
+    return res.json({ ok: true, answer });
+  } catch (err) {
+    console.warn('[Direct Completion Error, relying on WS stream]:', err.message);
+    return res.json({ ok: true, message: 'Answer streaming via WebSocket' });
+  }
 });
 
 // Telecom Configuration & Dial-code info (Twilio Primary Bridge)
@@ -921,8 +946,8 @@ wss.on('connection', (ws, req) => {
       liveRooms.set(roomId, room);
     }
 
-    // SMART AUTO-ROUTING: If the requested room has no active host, auto-connect to any active host
-    if (!room.hostWs || room.hostWs.readyState !== WebSocket.OPEN) {
+    // SMART AUTO-ROUTING: Only for default spectator rooms, NEVER re-route 'main_room' (recruiter copilot)
+    if (roomId !== 'main_room' && (!room.hostWs || room.hostWs.readyState !== WebSocket.OPEN)) {
       for (const [activeId, activeRoom] of liveRooms.entries()) {
         if (activeRoom.hostWs && activeRoom.hostWs.readyState === WebSocket.OPEN) {
           console.log(`[Spectator Smart Route] Auto-connecting spectator from "${roomId}" to active host room "${activeId}"`);
