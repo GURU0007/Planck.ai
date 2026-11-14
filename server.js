@@ -796,10 +796,6 @@ ${optimizedContext}`
         temperature: 0.25,
         max_tokens: maxTokensToGenerate,
       });
-        stream: true,
-        temperature: 0.25,
-        max_tokens: 180,
-      });
 
       for await (const chunk of stream) {
         const token = chunk.choices[0]?.delta?.content || '';
