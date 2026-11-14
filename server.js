@@ -730,9 +730,10 @@ telecomWss.on('connection', (ws, req) => {
     channels: 1,
   });
 
-  let currentTurnPhrases = [];
+  let recruiterTurnUtterances = []; // Continuously accumulates recruiter utterances across mid-sentence pauses
   let isGenerating = false;
-  let turnDebounceTimer = null;
+  let turnSilenceTimer = null;
+  let lastAnsweredQuestion = '';
 
   dgConnection.on(LiveTranscriptionEvents.Open, () => {
     console.log(`[Telecom STT] Deepgram Nova-3 active for phone call ${callControlId} (8000Hz mulaw)`);
@@ -744,47 +745,61 @@ telecomWss.on('connection', (ws, req) => {
 
     const corrected = autocorrectTechTerms(rawText);
     const isFinal = data.is_final;
-    const isSpeechFinal = data.speech_final;
 
     if (isFinal) {
-      currentTurnPhrases.push(corrected);
-      console.log(`[Phone STT Final] "${corrected}"`);
+      recruiterTurnUtterances.push(corrected);
+      const accumulatedSpeech = recruiterTurnUtterances.join(' ').trim();
+      console.log(`[Phone Recruiter STT] "${corrected}" (Full turn so far: ${accumulatedSpeech.length} chars)`);
 
-      // Silence confirmation
-      if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
-      turnDebounceTimer = setTimeout(async () => {
-        const fullQ = currentTurnPhrases.join(' ').trim();
-        if (fullQ.length >= 8 && !isIncompleteThought(fullQ) && !isGenerating) {
-          currentTurnPhrases = [];
-          isGenerating = true;
-          console.log(`[Phone Copilot Auto-Trigger] Generating answer for: "${fullQ}"`);
-          const roomObj = liveRooms.get(roomId);
-          await generateInstantAnswer(fullQ, roomObj?.hostWs, groq, roomId);
-          isGenerating = false;
+      // Broadcast full cumulative speech to recruiter dashboard in real-time!
+      broadcastToRoom(roomId, {
+        type: 'transcript',
+        text: corrected,
+        cumulativeText: accumulatedSpeech,
+        isFinal,
+        isPhoneCall: true
+      });
+
+      // Clear any pending silence timer
+      if (turnSilenceTimer) clearTimeout(turnSilenceTimer);
+
+      // Conversational Silence Threshold: Wait 1800ms of sustained quiet before deciding recruiter finished question
+      turnSilenceTimer = setTimeout(async () => {
+        const fullQ = recruiterTurnUtterances.join(' ').trim();
+
+        // Check if there is genuine question substance (not just greetings or trailing words)
+        if (fullQ.length >= 20 && !isIncompleteThought(fullQ) && !isGenerating) {
+          if (fullQ === lastAnsweredQuestion) return;
+
+          const lower = fullQ.toLowerCase();
+          const hasQuestionIntent = 
+            lower.includes('?') ||
+            /\b(how|what|why|explain|tell me|describe|walk me|can you|could you|difference|thoughts on|approach|compare|experience with)\b/i.test(lower) ||
+            fullQ.length > 55;
+
+          if (hasQuestionIntent) {
+            isGenerating = true;
+            lastAnsweredQuestion = fullQ;
+            console.log(`[Phone Copilot Auto-Trigger] Full Recruiter Context (${fullQ.length} chars): "${fullQ}"`);
+
+            const roomObj = liveRooms.get(roomId);
+            await generateInstantAnswer(fullQ, roomObj?.hostWs, groq, roomId);
+            isGenerating = false;
+
+            // Reset accumulator for the next recruiter turn
+            recruiterTurnUtterances = [];
+          }
         }
-      }, 800);
-    }
-
-    const payload = {
-      type: 'transcript',
-      text: corrected,
-      isFinal,
-      isSpeechFinal,
-      isPhoneCall: true
-    };
-    broadcastToRoom(roomId, payload);
-
-    if (isSpeechFinal) {
-      const fullTurn = currentTurnPhrases.join(' ').trim() || corrected;
-      if (!isIncompleteThought(fullTurn) && fullTurn.length >= 8 && !isGenerating) {
-        if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
-        currentTurnPhrases = [];
-        isGenerating = true;
-        console.log(`[Phone Speech Final Trigger] Answering: "${fullTurn}"`);
-        const roomObj = liveRooms.get(roomId);
-        await generateInstantAnswer(fullTurn, roomObj?.hostWs, groq, roomId);
-        isGenerating = false;
-      }
+      }, 1800);
+    } else {
+      // Send interim words without wiping accumulator
+      broadcastToRoom(roomId, {
+        type: 'transcript',
+        text: corrected,
+        cumulativeText: (recruiterTurnUtterances.join(' ') + ' ' + corrected).trim(),
+        isFinal: false,
+        isPhoneCall: true
+      });
     }
   });
 
@@ -1290,14 +1305,26 @@ async function generateInstantAnswer(rawQuestion, ws, groq, roomId) {
   let maxTokensToGenerate = 160;
 
   if (currentStyle === 'deep') {
-    maxTokensToGenerate = 280;
+    maxTokensToGenerate = 320;
     styleInstructions = `
-CRITICAL FORMAT REQUIREMENTS (DEEP STAR INTERVIEW METHOD):
-Structure the verbal answer using the proven STAR framework for senior recruiter screening:
-• **Situation & Task**: 1 crisp, authoritative sentence setting the context and engineering challenge.
-• **Action**: 2 punchy bullet points covering concrete architectural actions, technologies used, and execution decisions.
-• **Result**: 1 quantifiable impact sentence (e.g. 40% latency reduction, zero downtime migration, millions of req/sec scale).
-• Keep total length under 115 words so it is immediately readable and conversational.`;
+CRITICAL FORMAT REQUIREMENTS (FLUID SPOKEN PARAGRAPHS - STRICTLY ZERO BULLETS):
+The candidate is speaking live on a phone screen with a recruiter and will read this answer smoothly aloud.
+
+1. ZERO BULLET POINTS, ZERO ASTERISKS, ZERO LISTS:
+   - Absolutely NO bullets (•, -, *).
+   - Absolutely NO markdown bold or italic asterisks (* or **).
+   - Absolutely NO section headers (do NOT write "Situation:", "Task:", "Action:", or "Result:").
+   - Output ONLY 2 to 3 fluid, natural paragraphs separated by clean blank lines.
+
+2. SPOKEN STAR NARRATIVE:
+   - Paragraph 1: Set up the real-world context and technical problem naturally (e.g., "In my recent architecture work with distributed microservices, we faced a major challenge with data consistency across independent services without risking distributed deadlocks.")
+   - Paragraph 2: Dive straight into the technical mechanics and architectural solution (e.g., "To solve this, I implemented an orchestrator-based Saga alongside a transactional outbox table in Postgres. Instead of fragile two-phase commits, every business mutation wrote the domain state and an outbox event in the same local ACID transaction, and an asynchronous worker published those events to Kafka with guaranteed at-least-once delivery and idempotency.")
+   - Paragraph 3: Wrap up with measurable production results and impact (e.g., "This completely eliminated event loss and partial failures, gave us strict eventual consistency across all services, and handled over eight thousand requests per second seamlessly during peak traffic.")
+
+3. CONVERSATIONAL CADENCE:
+   - Tone: Highly knowledgeable, articulate senior engineer speaking naturally.
+   - First-person perspective ("In my experience", "I designed", "we implemented").
+   - Length: 110 to 140 words total so the candidate can speak it in ~50 seconds without breaking flow.`;
   } else if (currentStyle === 'direct') {
     maxTokensToGenerate = 90;
     styleInstructions = `
@@ -1341,7 +1368,7 @@ ${optimizedContext}`
   ];
 
   // Primary model and fallback model with separate rate limit pools
-  const modelsToTry = ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
+  const modelsToTry = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen/qwen3.8-27b'];
   let streamSuccess = false;
   let lastError = null;
 

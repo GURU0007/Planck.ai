@@ -591,7 +591,8 @@
 
       // 4. Live Speech / Transcript
       if (data.type === 'transcript') {
-        recruiterLiveSpeechText.innerHTML = `"${escapeHtml(data.text)}"`;
+        const fullSpeech = data.cumulativeText || data.text;
+        recruiterLiveSpeechText.innerHTML = `"${escapeHtml(fullSpeech)}"`;
         recruiterSpeechTimestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       }
 
@@ -624,17 +625,18 @@
     }
 
     function renderAnswer(raw) {
-      const lines = raw.split('\n').filter(l => l.trim().length > 0);
+      if (!raw || !raw.trim()) return;
+      // Strip any accidental markdown bold/italic asterisks or backticks for seamless verbal reading
+      const clean = raw.replace(/[*_`]/g, '').trim();
+      const paragraphs = clean.split(/\n\s*\n/).map(p => p.trim()).filter(p => p.length > 0);
+      
       let html = '';
-      lines.forEach(line => {
-        const trimmed = line.trim();
-        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
-          html += `<div class="flex items-start gap-2 bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 shadow-xs">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0"></span>
-            <span class="text-white font-medium text-sm leading-relaxed">${escapeHtml(trimmed.replace(/^[-•*]\s*/, ''))}</span>
+      paragraphs.forEach(para => {
+        const cleanPara = para.replace(/^\s*[-•*]\s*/gm, '').trim();
+        if (cleanPara) {
+          html += `<div class="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 sm:p-5 shadow-sm">
+            <p class="text-slate-100 text-sm sm:text-base leading-relaxed tracking-normal font-normal">${escapeHtml(cleanPara)}</p>
           </div>`;
-        } else {
-          html += `<p class="text-slate-200 text-sm leading-relaxed">${escapeHtml(trimmed)}</p>`;
         }
       });
       recruiterAnswerContent.innerHTML = html;
