@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
+const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const WebSocket = require('ws');
@@ -50,6 +51,15 @@ const liveRooms = new Map();
 // Spectator Teleprompter Route
 app.get('/live', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live.html'));
+});
+
+// Download Standalone Native Stealth Executable (Full WDA_EXCLUDEFROMCAPTURE Screen-Share Immunity)
+app.get('/download/stealth-exe', (req, res) => {
+  const localZip = path.join(__dirname, 'dist', 'Planck-Stealth-Windows.zip');
+  if (fs.existsSync(localZip)) {
+    return res.download(localZip, 'Planck-Stealth-Windows.zip');
+  }
+  res.redirect('https://github.com/GURU0007/Planck.ai/releases/latest/download/Planck-Stealth-Windows.zip');
 });
 
 // Download Standalone Stealth Launcher (.bat for Windows, .command for Mac) configured for user's room

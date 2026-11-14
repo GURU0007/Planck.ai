@@ -243,9 +243,9 @@
               <i id="icon-stealth" data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform"></i>
             </button>
             <div id="guide-stealth" class="hidden mt-3 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 space-y-2">
-              <p><strong>1. Launch Copilot Window:</strong> Click <em>Launch Interview Copilot</em> to open the standalone web HUD, or download the 1-click launcher for <strong>Windows (.bat)</strong> or <strong>Mac (.command)</strong>.</p>
-              <p><strong>2. Select Tab Audio:</strong> On the host workspace, click <em>Capture Tab Audio</em> and select your interview tab (check <em>Share tab audio</em>).</p>
-              <p><strong>3. Answer Streaming:</strong> The floating HUD captures only the interviewer and displays real-time answers!</p>
+              <p><strong>🛡️ 100% Stealth Guarantee (How it works):</strong></p>
+              <p><strong>Option A (Native Stealth .exe):</strong> Run <code>Planck-Stealth.exe</code>. It activates OS-level capture exclusion (<code>WDA_EXCLUDEFROMCAPTURE</code>). Google Meet and Zoom literally see through it even if you share your entire desktop!</p>
+              <p><strong>Option B (Web App / PWA):</strong> If using the web prompter, in Google Meet select <strong>"A Window"</strong> (your IDE) or <strong>"A Tab"</strong> (LeetCode). Meet only captures that target, making the prompter 100% invisible!</p>
             </div>
           </div>
         </div>
@@ -256,17 +256,21 @@
             <span>Launch Interview Copilot</span>
             <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
           </a>
+          <a href="/download/stealth-exe" class="w-full bg-indigo-950/80 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 hover:text-white py-2 px-3 rounded-xl text-xs font-bold text-center transition flex items-center justify-center gap-1.5 shadow-sm">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span>Download Native Stealth App (.exe - Screen-Share Immune)</span>
+          </a>
           <div class="grid grid-cols-2 gap-2">
-            <a href="/download/stealth?os=windows" download="planck-stealth.bat" class="bg-slate-800/80 hover:bg-slate-800 text-emerald-400 py-2 px-2 rounded-xl text-xs font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-700/60 shadow-xs">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i> Windows (.bat)
+            <a href="/download/stealth?os=windows" download="planck-stealth.bat" class="bg-slate-800/80 hover:bg-slate-800 text-emerald-400 py-1.5 px-2 rounded-xl text-[11px] font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-700/60 shadow-xs">
+              <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Windows (.bat)
             </a>
-            <a href="/download/stealth?os=mac" download="planck-stealth.command" class="bg-slate-800/80 hover:bg-slate-800 text-teal-300 py-2 px-2 rounded-xl text-xs font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-700/60 shadow-xs">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i> Mac (.command)
+            <a href="/download/stealth?os=mac" download="planck-stealth.command" class="bg-slate-800/80 hover:bg-slate-800 text-teal-300 py-1.5 px-2 rounded-xl text-[11px] font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-700/60 shadow-xs">
+              <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Mac (.command)
             </a>
           </div>
-          <button id="pwaLandingBtn" onclick="installLandingPwa()" class="w-full bg-slate-900/90 hover:bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white py-1.5 px-2 rounded-xl text-[11px] font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-800">
+          <button id="pwaLandingBtn" onclick="installLandingPwa()" class="w-full bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white py-1.5 px-2 rounded-xl text-[11px] font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-800">
             <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
-            <span>Install Native Desktop App (Zero Warnings)</span>
+            <span>Install Web App (PWA)</span>
           </button>
         </div>
       </div>

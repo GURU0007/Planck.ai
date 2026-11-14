@@ -24,3 +24,10 @@ Thumbs.db
 debug_*.js
 test_*.js
 list_*.js
+
+# Electron Desktop Builds & Distribution Archives
+dist/
+stealth-package/
+*.zip
+*.exe
+*.dmg
