@@ -333,6 +333,23 @@ const TWILIO_MASTER_DID = process.env.TWILIO_PHONE_NUMBER || '+12543904880';
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID || ['AC51c9e8', 'ae6b8d64', '8ebe4a37', 'fa09e83057'].join('');
 const TWILIO_AUTH = process.env.TWILIO_AUTH_TOKEN || ['fb0af852', '4b583bb9', '70e7e932', '2338d4ac'].join('');
 
+// Master Groq Client for fail-safe background and manual answers
+const masterGroq = process.env.GROQ_API_KEY ? new Groq({ apiKey: process.env.GROQ_API_KEY }) : null;
+
+// Manual AI Answer Trigger Endpoint (REST Fallback for 100% guarantee)
+app.post('/api/telecom/generate', async (req, res) => {
+  const { text, roomId } = req.body;
+  if (!text || !text.trim()) return res.status(400).json({ error: 'Text is required' });
+  const targetRoomId = (roomId || 'main_room').trim();
+  console.log(`[REST Trigger Answer] Generating for: "${text.substring(0, 80)}..." in room "${targetRoomId}"`);
+
+  generateInstantAnswer(text, null, masterGroq, targetRoomId).catch(err => {
+    console.error('[REST Trigger Error]', err);
+  });
+
+  res.json({ ok: true, message: 'Generating answer stream' });
+});
+
 // Telecom Configuration & Dial-code info (Twilio Primary Bridge)
 app.get('/api/telecom/config', (req, res) => {
   res.json({
@@ -943,11 +960,15 @@ wss.on('connection', (ws, req) => {
       }));
     }
 
-    ws.on('message', (msg) => {
+    ws.on('message', async (msg) => {
       try {
         const parsed = JSON.parse(msg.toString());
         if (parsed.type === 'set_answer_style' && room) {
           room.answerStyle = parsed.style || 'bullets';
+        }
+        if (parsed.type === 'trigger_manual_answer') {
+          console.log(`[Spectator Trigger Manual Answer] Generating for: "${parsed.text}" in room "${roomId}"`);
+          await generateInstantAnswer(parsed.text, ws, masterGroq, roomId);
         }
       } catch (e) {}
     });
@@ -1297,6 +1318,7 @@ function getOptimizedCandidateContext(rawContext) {
 
 // Ultra-fast streaming answer generator with automatic model fallback and live spectator mirroring
 async function generateInstantAnswer(rawQuestion, ws, groq, roomId) {
+  const activeGroq = groq || masterGroq;
   const room = roomId ? liveRooms.get(roomId) : null;
   const question = cleanQuestionForLLM(rawQuestion);
   const answerId = 'ans_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
@@ -1319,7 +1341,7 @@ async function generateInstantAnswer(rawQuestion, ws, groq, roomId) {
     }
   }
 
-  if (!groq) {
+  if (!activeGroq) {
     broadcast({
       type: 'answer_error',
       message: 'Groq API key is not configured in .env.'
@@ -1422,7 +1444,7 @@ ${optimizedContext}`
   for (const model of modelsToTry) {
     try {
       console.log(`[Groq] Generating answer with model: ${model} [Style: ${currentStyle}]`);
-      const stream = await groq.chat.completions.create({
+      const stream = await activeGroq.chat.completions.create({
         model: model,
         messages: messages,
         stream: true,
