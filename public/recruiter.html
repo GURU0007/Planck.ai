@@ -480,6 +480,49 @@
       };
     }
 
+    // Audible Phone Ringing Engine (Web Audio API Synthesized US Carrier Ringer)
+    let ringtoneInterval = null;
+    function playPhoneRingChime() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(440, audioCtx.currentTime); // 440Hz + 480Hz US Ring
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(480, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.12, audioCtx.currentTime + 0.05);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1.2);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(audioCtx.currentTime + 1.2);
+        osc2.stop(audioCtx.currentTime + 1.2);
+      } catch (e) {}
+    }
+
+    function startRingtoneLoop() {
+      stopRingtoneLoop();
+      playPhoneRingChime();
+      ringtoneInterval = setInterval(playPhoneRingChime, 3000);
+    }
+
+    function stopRingtoneLoop() {
+      if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
+      }
+    }
+
     let activeAnswerTokens = '';
     let currentQuestionText = '';
 
@@ -490,10 +533,12 @@
         incomingCallerName.textContent = data.callerName || 'Recruiter Call';
         incomingCallerNumber.textContent = data.from || 'Incoming Line';
         incomingCallModal.classList.remove('hidden');
+        startRingtoneLoop();
       }
 
       // 2. Call Answered
       if (data.type === 'telecom_call_answered') {
+        stopRingtoneLoop();
         incomingCallModal.classList.add('hidden');
         phoneStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
         phoneStatusText.textContent = '📞 Call in Progress (Inbound Only)';
@@ -503,6 +548,7 @@
 
       // 3. Call Ended
       if (data.type === 'telecom_call_ended') {
+        stopRingtoneLoop();
         incomingCallModal.classList.add('hidden');
         activeCallControlId = null;
         phoneStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
@@ -605,13 +651,18 @@
     // Accept Inbound Call
     if (acceptCallBtn) {
       acceptCallBtn.onclick = async () => {
+        stopRingtoneLoop();
         incomingCallModal.classList.add('hidden');
         if (activeCallControlId) {
-          await fetch('/api/telecom/answer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ callControlId: activeCallControlId })
-          });
+          try {
+            await fetch('/api/telecom/answer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ callControlId: activeCallControlId })
+            });
+          } catch (e) {
+            console.error('[Answer Call Error]', e);
+          }
         }
       };
     }
@@ -619,13 +670,16 @@
     // Decline Inbound Call
     if (declineCallBtn) {
       declineCallBtn.onclick = async () => {
+        stopRingtoneLoop();
         incomingCallModal.classList.add('hidden');
         if (activeCallControlId) {
-          await fetch('/api/telecom/hangup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ callControlId: activeCallControlId })
-          });
+          try {
+            await fetch('/api/telecom/hangup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ callControlId: activeCallControlId })
+            });
+          } catch (e) {}
           activeCallControlId = null;
         }
       };
