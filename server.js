@@ -380,10 +380,10 @@ app.post('/api/telecom/webhook', async (req, res) => {
       timestamp: new Date().toISOString()
     });
 
-    // Immediately answer call so caller connects with ZERO dead air and start media streaming!
+    // Immediately answer call so caller connects with ZERO dead air!
     try {
       console.log(`[Telecom Auto-Answer] Answering call ${callControlId} from ${from}`);
-      await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`, {
+      const ansRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${TELNYX_MASTER_KEY}`,
@@ -391,27 +391,8 @@ app.post('/api/telecom/webhook', async (req, res) => {
         },
         body: JSON.stringify({})
       });
-
-      const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream?callControlId=${encodeURIComponent(callControlId)}&roomId=${encodeURIComponent(targetRoomId)}`;
-      const streamRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/streaming_start`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${TELNYX_MASTER_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          stream_url: streamUrl,
-          stream_track: 'inbound_track'
-        })
-      });
-      const streamData = await streamRes.json();
-      console.log(`[Telecom Auto-Stream] Media stream initiated:`, streamData);
-
-      broadcastToRoom(targetRoomId, {
-        type: 'telecom_call_answered',
-        callControlId,
-        from
-      });
+      const ansData = await ansRes.json();
+      console.log(`[Telecom Answer Response]`, ansData);
     } catch (autoErr) {
       console.error('[Telecom Auto-Answer Error]', autoErr);
     }
@@ -425,10 +406,11 @@ app.post('/api/telecom/webhook', async (req, res) => {
         from: callData.from
       });
 
-      // Ensure media stream is active
+      // Call is now officially in 'answered' state! Start inbound media stream
       const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream?callControlId=${encodeURIComponent(callControlId)}&roomId=${encodeURIComponent(callData.roomId)}`;
       try {
-        await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/streaming_start`, {
+        console.log(`[Telecom Stream] Starting inbound stream to: ${streamUrl}`);
+        const streamRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/streaming_start`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${TELNYX_MASTER_KEY}`,
@@ -439,7 +421,11 @@ app.post('/api/telecom/webhook', async (req, res) => {
             stream_track: 'inbound_track'
           })
         });
-      } catch (streamErr) {}
+        const streamData = await streamRes.json();
+        console.log(`[Telecom Stream Response]`, streamData);
+      } catch (streamErr) {
+        console.warn('[Telecom Stream Error]', streamErr.message);
+      }
     }
   } else if (eventType === 'call.hangup') {
     const callData = activeTelecomCalls.get(callControlId);
