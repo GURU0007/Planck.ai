@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>planck.ai — Recruiter Phone Screen Copilot</title>
+  
+  <!-- PDF.js & Mammoth for Resume Parsing -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+
+  <!-- Tailwind CSS & Lucide Icons -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Dark custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #020617;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+    /* Liquid Silk Word Flow */
+    @keyframes butterSilk {
+      0% { opacity: 0; filter: blur(3px); }
+      50% { opacity: 0.85; filter: blur(0.6px); }
+      100% { opacity: 1; filter: blur(0px); }
+    }
+    .k-word {
+      display: inline;
+      animation: butterSilk 240ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      will-change: opacity, filter;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 0.9; transform: scale(1.02); }
+    }
+    .glow-bg {
+      animation: pulseGlow 6s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans h-screen h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden selection:bg-indigo-500 selection:text-white">
+
+  <!-- Ambient Glow Gradients -->
+  <div class="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+    <div class="absolute -top-32 left-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl glow-bg"></div>
+    <div class="absolute top-1/2 -right-20 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl glow-bg"></div>
+  </div>
+
+  <!-- TOP HEADER -->
+  <header class="bg-slate-950/90 border-b border-slate-800/80 px-4 sm:px-6 py-2.5 flex items-center justify-between shrink-0 shadow-lg z-20 backdrop-blur-md">
+    <!-- Brand & Back -->
+    <div class="flex items-center space-x-3 shrink-0">
+      <a href="/" class="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition" title="Back to Planck Modes">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+      </a>
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/25">
+        <i data-lucide="phone-call" class="w-4 h-4 text-white"></i>
+      </div>
+      <div>
+        <h1 class="font-extrabold text-sm sm:text-base text-white tracking-tight flex items-center gap-1.5">
+          planck<span class="text-indigo-400">.ai</span>
+          <span class="text-[10px] bg-indigo-950 border border-indigo-700/60 text-indigo-300 font-mono font-bold px-2 py-0.5 rounded-full uppercase">Recruiter Phone Screen</span>
+        </h1>
+      </div>
+    </div>
+
+    <!-- Active Call / Connection Status & Quick Controls -->
+    <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+      <!-- Status Badge -->
+      <div id="phoneStatusBadge" class="flex items-center gap-1.5 bg-slate-900 border border-slate-800 text-slate-300 px-3 py-1.5 rounded-xl text-xs font-semibold">
+        <span id="phoneStatusDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="phoneStatusText">Carrier Bridge Ready</span>
+      </div>
+
+      <!-- Upload Resume Button -->
+      <button id="openResumeModalBtn" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
+        <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400"></i>
+        <span class="hidden sm:inline">Resume Context</span>
+      </button>
+
+      <!-- Carrier Setup Toggle Button -->
+      <button id="toggleSetupGuideBtn" class="bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-700/60 text-indigo-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition">
+        <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">Carrier Code (*67*)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- COLLAPSIBLE CARRIER PAIRING BANNER -->
+  <div id="carrierPairingBanner" class="bg-indigo-950/40 border-b border-indigo-900/50 px-4 sm:px-6 py-3 text-xs text-indigo-200 shrink-0">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div class="space-y-1">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <strong class="text-white text-sm">One-Time Carrier Setup (Works on iPhone &amp; Android):</strong>
+          <span class="text-[10px] bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded font-mono">Mint / T-Mobile / Verizon / AT&amp;T</span>
+        </div>
+        <p class="text-slate-300">
+          Dial the code below once on your phone. When a recruiter calls your personal number, tap <strong>Decline (Red button)</strong>. The call instantly routes to this screen with live AI answers!
+        </p>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <div class="bg-slate-950 border border-indigo-800 rounded-xl px-3 py-1.5 flex items-center gap-2 font-mono text-amber-300 font-bold text-sm">
+          <span id="carrierCodeDisplay">*67*18007526250#</span>
+          <button id="copyCarrierCodeBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold px-2 py-0.5 rounded transition">
+            Copy
+          </button>
+        </div>
+        <button onclick="document.getElementById('carrierPairingBanner').classList.add('hidden')" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="flex-1 min-h-0 w-full overflow-hidden flex flex-col lg:flex-row p-3 sm:p-5 gap-3 sm:gap-4 bg-slate-950">
+
+    <!-- LEFT / MAIN PANE: LIVE RECRUITER SPEECH & INSTANT TALKING POINTS (70% WIDTH ON DESKTOP) -->
+    <section class="flex-1 min-h-0 flex flex-col gap-3 sm:gap-4 overflow-hidden">
+
+      <!-- CARD 1: RECRUITER'S LIVE SPEECH & QUESTIONS -->
+      <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-lg shadow-black/20 shrink-0">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2 text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">
+            <span id="recruiterPulseDot" class="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse"></span>
+            <span id="recruiterSpeechLabel">Recruiter Speaking (Inbound Audio Stream)</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-mono text-slate-400">
+            <span id="callTimerDisplay" class="hidden text-emerald-400 font-bold">00:00</span>
+            <span id="recruiterSpeechTimestamp">Ready for incoming call</span>
+          </div>
+        </div>
+
+        <!-- Recruiter Question Text Stage -->
+        <div class="min-h-[46px] flex items-center">
+          <p id="recruiterLiveSpeechText" class="text-base sm:text-lg md:text-xl font-bold text-white leading-relaxed break-words">
+            <span class="text-slate-500 font-normal italic text-sm sm:text-base">Waiting for recruiter to speak... (Candidate mic is 100% excluded)</span>
+            <span class="inline-block w-2 h-5 bg-indigo-500 ml-1.5 align-middle animate-pulse rounded-2xs"></span>
+          </p>
+        </div>
+
+        <!-- Inbound Call Notice -->
+        <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <div class="flex items-center gap-2">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+            <span><strong>Silent Inbound Fork:</strong> Planck only captures the recruiter's incoming audio. Your responses are never recorded or looped.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARD 2: INSTANT AI TALKING POINTS (PROMPTER) -->
+      <div class="flex-1 min-h-0 bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-lg shadow-black/20 flex flex-col overflow-hidden">
+        <!-- Subheader -->
+        <div class="flex items-center justify-between mb-3 border-b border-slate-800/80 pb-3 shrink-0 flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)]"></div>
+            <h2 class="text-sm sm:text-base font-bold text-white">Instant AI Talking Points (Recruiter Screen)</h2>
+          </div>
+
+          <!-- Answer Style Selector -->
+          <div class="flex items-center bg-slate-950/90 rounded-xl p-1 border border-slate-800 text-xs font-semibold">
+            <button id="styleBulletsBtn" onclick="setRecruiterAnswerStyle('bullets')" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs" title="3 concise verbal talking points (<15 words each)">
+              <span>⚡ Bullets</span>
+            </button>
+            <button id="styleDirectBtn" onclick="setRecruiterAnswerStyle('direct')" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1" title="Direct 1-2 sentence response">
+              <span>🎯 Direct</span>
+            </button>
+            <button id="styleDeepBtn" onclick="setRecruiterAnswerStyle('deep')" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1" title="Deep STAR story & architecture breakdown">
+              <span>📐 Deep STAR</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Answer Streaming Container -->
+        <div id="recruiterAnswerContainer" class="flex-1 overflow-y-auto pr-1 space-y-3 font-sans">
+          <div id="answerEmptyState" class="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 py-8">
+            <div class="w-12 h-12 rounded-2xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center text-indigo-400">
+              <i data-lucide="sparkles" class="w-6 h-6"></i>
+            </div>
+            <p class="text-sm text-center text-slate-400 max-w-md">
+              When the recruiter asks about your background, experience, or tech stack, instant bullet answers will stream here in <strong>&lt;500ms</strong>.
+            </p>
+          </div>
+          <div id="recruiterAnswerContent" class="text-slate-100 text-sm sm:text-base leading-relaxed space-y-2.5 hidden"></div>
+        </div>
+
+        <!-- Footer Status -->
+        <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 shrink-0">
+          <span id="answerLatencyBadge" class="bg-slate-950 border border-slate-800 px-2.5 py-1 rounded-lg font-mono text-[11px] text-emerald-400 font-bold">
+            ⚡ Groq Llama 3.3 Active (~120ms TTFT)
+          </span>
+          <span class="text-slate-500">Auto-scroll enabled</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANE: OUTBOUND DIALER & CALL HISTORY (30% WIDTH ON DESKTOP) -->
+    <aside class="w-full lg:w-96 flex flex-col gap-3 sm:gap-4 shrink-0 overflow-hidden">
+
+      <!-- OUTBOUND RECRUITER DIALER CARD -->
+      <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-lg shadow-black/20 shrink-0 space-y-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+            <i data-lucide="phone-outgoing" class="w-4 h-4 text-emerald-400"></i>
+            <span>Outbound Recruiter Dialer</span>
+          </h3>
+          <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">Caller ID: Your Phone</span>
+        </div>
+
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Recruiter asked you to call them? Type their number below to call directly from your browser.
+        </p>
+
+        <!-- Phone Input & Call Button -->
+        <div class="space-y-2">
+          <input type="tel" id="outboundNumberInput" placeholder="+1 (415) 555-0199" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <button id="startOutboundCallBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold py-2.5 rounded-xl shadow-md shadow-emerald-600/25 transition text-xs flex items-center justify-center gap-2">
+            <i data-lucide="phone-call" class="w-4 h-4"></i>
+            <span>Call Recruiter Now</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PAST QUESTIONS & TALKING POINTS HISTORY -->
+      <div class="flex-1 min-h-0 bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-lg shadow-black/20 flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800/80 shrink-0">
+          <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
+            <i data-lucide="history" class="w-4 h-4 text-purple-400"></i>
+            <span>Call Q&amp;A History</span>
+          </h3>
+          <span id="historyCountBadge" class="text-[11px] font-mono text-slate-400">0 questions</span>
+        </div>
+
+        <div id="historyListContainer" class="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
+          <div id="historyEmptyState" class="h-full flex flex-col items-center justify-center text-slate-500 text-center p-4">
+            <i data-lucide="message-square" class="w-6 h-6 text-slate-600 mb-1"></i>
+            <p>Past recruiter questions and talking points will appear here.</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- RESUME CONTEXT MODAL -->
+  <div id="resumeModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-800 p-5 sm:p-6 space-y-4 text-white">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="file-up" class="w-5 h-5 text-indigo-400"></i>
+          <span>Upload Resume &amp; Candidate Context</span>
+        </h3>
+        <button id="closeResumeModalBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        Planck aligns recruiter answers to your actual experience, previous company accomplishments, and target compensation.
+      </p>
+
+      <div class="space-y-2">
+        <input type="file" id="resumeFileInput" accept=".pdf,.docx,.txt" class="block w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer" />
+        <textarea id="resumeTextarea" rows="6" placeholder="Or paste your resume, key projects, and salary requirements here..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="saveResumeBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-md">
+          Save Context
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOMING RECRUITER CALL ALERT MODAL -->
+  <div id="incomingCallModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-gradient-to-b from-slate-900 to-slate-950 rounded-3xl w-full max-w-sm shadow-2xl border border-indigo-700/80 p-6 text-center space-y-5 text-white animate-bounce-short">
+      
+      <div class="relative w-20 h-20 mx-auto flex items-center justify-center">
+        <div class="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping"></div>
+        <div class="absolute inset-2 rounded-full bg-emerald-500/40 animate-pulse"></div>
+        <div class="relative w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xl shadow-emerald-500/50">
+          <i data-lucide="phone-incoming" class="w-7 h-7 animate-pulse"></i>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <span class="text-[10px] bg-emerald-950 border border-emerald-700/80 text-emerald-300 font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+          Forwarded Call (*67*)
+        </span>
+        <h3 id="incomingCallerName" class="text-xl font-extrabold text-white mt-1">Recruiter Call</h3>
+        <p id="incomingCallerNumber" class="text-sm font-mono text-slate-300">+1 (415) 555-0199</p>
+        <p class="text-xs text-indigo-300 font-medium">Inbound Recruiter Audio Stream Ready</p>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button id="declineCallBtn" class="bg-slate-800 hover:bg-rose-950/80 hover:border-rose-700 border border-slate-700 text-slate-300 hover:text-rose-200 font-bold py-3 rounded-2xl transition flex items-center justify-center gap-1.5 text-sm">
+          <i data-lucide="phone-off" class="w-4 h-4"></i>
+          <span>Decline</span>
+        </button>
+        <button id="acceptCallBtn" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold py-3 rounded-2xl shadow-lg shadow-emerald-600/40 transition flex items-center justify-center gap-1.5 text-sm">
+          <i data-lucide="headphones" class="w-4 h-4"></i>
+          <span>Answer Call</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // State
+    const roomId = 'main_room';
+    let socket = null;
+    let activeCallControlId = null;
+    let currentStyle = 'bullets';
+    let pastTurns = [];
+    let callTimerInterval = null;
+    let callSeconds = 0;
+
+    // Elements
+    const phoneStatusDot = document.getElementById('phoneStatusDot');
+    const phoneStatusText = document.getElementById('phoneStatusText');
+    const recruiterLiveSpeechText = document.getElementById('recruiterLiveSpeechText');
+    const recruiterSpeechLabel = document.getElementById('recruiterSpeechLabel');
+    const recruiterSpeechTimestamp = document.getElementById('recruiterSpeechTimestamp');
+    const callTimerDisplay = document.getElementById('callTimerDisplay');
+    const recruiterAnswerContent = document.getElementById('recruiterAnswerContent');
+    const answerEmptyState = document.getElementById('answerEmptyState');
+    const historyListContainer = document.getElementById('historyListContainer');
+    const historyEmptyState = document.getElementById('historyEmptyState');
+    const historyCountBadge = document.getElementById('historyCountBadge');
+    const carrierCodeDisplay = document.getElementById('carrierCodeDisplay');
+    const copyCarrierCodeBtn = document.getElementById('copyCarrierCodeBtn');
+    const toggleSetupGuideBtn = document.getElementById('toggleSetupGuideBtn');
+    const carrierPairingBanner = document.getElementById('carrierPairingBanner');
+
+    // Modals
+    const resumeModal = document.getElementById('resumeModal');
+    const openResumeModalBtn = document.getElementById('openResumeModalBtn');
+    const closeResumeModalBtn = document.getElementById('closeResumeModalBtn');
+    const resumeTextarea = document.getElementById('resumeTextarea');
+    const saveResumeBtn = document.getElementById('saveResumeBtn');
+    const resumeFileInput = document.getElementById('resumeFileInput');
+
+    // Incoming Call Modal
+    const incomingCallModal = document.getElementById('incomingCallModal');
+    const incomingCallerName = document.getElementById('incomingCallerName');
+    const incomingCallerNumber = document.getElementById('incomingCallerNumber');
+    const acceptCallBtn = document.getElementById('acceptCallBtn');
+    const declineCallBtn = document.getElementById('declineCallBtn');
+
+    // Outbound Dialer
+    const outboundNumberInput = document.getElementById('outboundNumberInput');
+    const startOutboundCallBtn = document.getElementById('startOutboundCallBtn');
+
+    // Toggle Carrier Setup Banner
+    if (toggleSetupGuideBtn) {
+      toggleSetupGuideBtn.onclick = () => {
+        carrierPairingBanner.classList.toggle('hidden');
+      };
+    }
+
+    // Copy Carrier Code
+    if (copyCarrierCodeBtn && carrierCodeDisplay) {
+      copyCarrierCodeBtn.onclick = () => {
+        navigator.clipboard.writeText(carrierCodeDisplay.textContent.trim()).then(() => {
+          copyCarrierCodeBtn.textContent = 'Copied!';
+          setTimeout(() => { copyCarrierCodeBtn.textContent = 'Copy'; }, 2000);
+        });
+      };
+    }
+
+    // Load Carrier Config
+    fetch('/api/telecom/config')
+      .then(r => r.json())
+      .then(cfg => {
+        if (cfg && cfg.carrierForwardCode && carrierCodeDisplay) {
+          carrierCodeDisplay.textContent = cfg.carrierForwardCode;
+        }
+      })
+      .catch(() => {});
+
+    // Resume Modal Logic
+    if (openResumeModalBtn) openResumeModalBtn.onclick = () => resumeModal.classList.remove('hidden');
+    if (closeResumeModalBtn) closeResumeModalBtn.onclick = () => resumeModal.classList.add('hidden');
+
+    fetch('/api/context')
+      .then(r => r.json())
+      .then(d => { if (d.context) resumeTextarea.value = d.context; })
+      .catch(() => {});
+
+    if (saveResumeBtn) {
+      saveResumeBtn.onclick = async () => {
+        const context = resumeTextarea.value.trim();
+        await fetch('/api/context', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ context })
+        });
+        resumeModal.classList.add('hidden');
+      };
+    }
+
+    if (resumeFileInput) {
+      resumeFileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.type === 'application/pdf') {
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          let fullText = '';
+          for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            fullText += textContent.items.map(item => item.str).join(' ') + '\n';
+          }
+          resumeTextarea.value = fullText.trim();
+        } else {
+          const text = await file.text();
+          resumeTextarea.value = text.trim();
+        }
+      };
+    }
+
+    // Answer Style Selector
+    function setRecruiterAnswerStyle(style) {
+      currentStyle = style;
+      const bBtn = document.getElementById('styleBulletsBtn');
+      const dBtn = document.getElementById('styleDirectBtn');
+      const deepBtn = document.getElementById('styleDeepBtn');
+
+      [bBtn, dBtn, deepBtn].forEach(btn => {
+        btn.className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1';
+      });
+
+      if (style === 'bullets') bBtn.className = 'px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs';
+      if (style === 'direct') dBtn.className = 'px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs';
+      if (style === 'deep') deepBtn.className = 'px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs';
+
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'set_answer_style', style }));
+      }
+    }
+
+    // Connect to WebSocket Server
+    function connectSocket() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws?spectator=true&roomId=${encodeURIComponent(roomId)}`;
+      socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+        console.log('[Recruiter Dashboard] Connected to WebSocket');
+        phoneStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        phoneStatusText.textContent = 'Carrier Bridge Ready';
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleMessage(data);
+        } catch (e) {}
+      };
+
+      socket.onclose = () => {
+        phoneStatusDot.className = 'w-2 h-2 rounded-full bg-slate-500';
+        phoneStatusText.textContent = 'Reconnecting...';
+        setTimeout(connectSocket, 3000);
+      };
+    }
+
+    let activeAnswerTokens = '';
+    let currentQuestionText = '';
+
+    function handleMessage(data) {
+      // 1. Telecom Inbound Call Alert
+      if (data.type === 'telecom_incoming_call') {
+        activeCallControlId = data.callControlId;
+        incomingCallerName.textContent = data.callerName || 'Recruiter Call';
+        incomingCallerNumber.textContent = data.from || 'Incoming Line';
+        incomingCallModal.classList.remove('hidden');
+      }
+
+      // 2. Call Answered
+      if (data.type === 'telecom_call_answered') {
+        incomingCallModal.classList.add('hidden');
+        phoneStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+        phoneStatusText.textContent = '📞 Call in Progress (Inbound Only)';
+        recruiterSpeechLabel.textContent = 'Recruiter Speaking (Live Call)';
+        startCallTimer();
+      }
+
+      // 3. Call Ended
+      if (data.type === 'telecom_call_ended') {
+        incomingCallModal.classList.add('hidden');
+        activeCallControlId = null;
+        phoneStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        phoneStatusText.textContent = 'Carrier Bridge Ready';
+        recruiterSpeechLabel.textContent = 'Call Ended';
+        stopCallTimer();
+      }
+
+      // 4. Live Speech / Transcript
+      if (data.type === 'transcript') {
+        recruiterLiveSpeechText.innerHTML = `"${escapeHtml(data.text)}"`;
+        recruiterSpeechTimestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // 5. Answer Start
+      if (data.type === 'answer_start') {
+        currentQuestionText = data.question;
+        activeAnswerTokens = '';
+        answerEmptyState.classList.add('hidden');
+        recruiterAnswerContent.classList.remove('hidden');
+        recruiterAnswerContent.innerHTML = '';
+        recruiterLiveSpeechText.innerHTML = `"${escapeHtml(data.question)}"`;
+      }
+
+      // 6. Answer Streaming Token
+      if (data.type === 'answer_token') {
+        activeAnswerTokens += data.token;
+        renderAnswer(activeAnswerTokens);
+        document.getElementById('recruiterAnswerContainer').scrollTop = document.getElementById('recruiterAnswerContainer').scrollHeight;
+      }
+
+      // 7. Answer Done
+      if (data.type === 'answer_done') {
+        pastTurns.unshift({
+          question: currentQuestionText,
+          answer: activeAnswerTokens,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        renderHistory();
+      }
+    }
+
+    function renderAnswer(raw) {
+      const lines = raw.split('\n').filter(l => l.trim().length > 0);
+      let html = '';
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+          html += `<div class="flex items-start gap-2 bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 shadow-xs">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 shrink-0"></span>
+            <span class="text-white font-medium text-sm leading-relaxed">${escapeHtml(trimmed.replace(/^[-•*]\s*/, ''))}</span>
+          </div>`;
+        } else {
+          html += `<p class="text-slate-200 text-sm leading-relaxed">${escapeHtml(trimmed)}</p>`;
+        }
+      });
+      recruiterAnswerContent.innerHTML = html;
+    }
+
+    function renderHistory() {
+      historyCountBadge.textContent = `${pastTurns.length} questions`;
+      if (pastTurns.length === 0) {
+        historyEmptyState.classList.remove('hidden');
+        return;
+      }
+      historyEmptyState.classList.add('hidden');
+      let html = '';
+      pastTurns.forEach(turn => {
+        html += `<div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3 space-y-1.5">
+          <div class="flex items-center justify-between text-[10px] text-slate-500 font-mono">
+            <span class="text-indigo-400 font-bold">Recruiter Question</span>
+            <span>${turn.time}</span>
+          </div>
+          <p class="font-bold text-white text-xs">"${escapeHtml(turn.question)}"</p>
+          <div class="pt-1 text-slate-300 text-[11px] leading-relaxed line-clamp-3">
+            ${escapeHtml(turn.answer)}
+          </div>
+        </div>`;
+      });
+      historyListContainer.innerHTML = html;
+    }
+
+    function startCallTimer() {
+      callSeconds = 0;
+      callTimerDisplay.classList.remove('hidden');
+      if (callTimerInterval) clearInterval(callTimerInterval);
+      callTimerInterval = setInterval(() => {
+        callSeconds++;
+        const mins = String(Math.floor(callSeconds / 60)).padStart(2, '0');
+        const secs = String(callSeconds % 60).padStart(2, '0');
+        callTimerDisplay.textContent = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    function stopCallTimer() {
+      if (callTimerInterval) clearInterval(callTimerInterval);
+      callTimerDisplay.classList.add('hidden');
+    }
+
+    // Accept Inbound Call
+    if (acceptCallBtn) {
+      acceptCallBtn.onclick = async () => {
+        incomingCallModal.classList.add('hidden');
+        if (activeCallControlId) {
+          await fetch('/api/telecom/answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callControlId: activeCallControlId })
+          });
+        }
+      };
+    }
+
+    // Decline Inbound Call
+    if (declineCallBtn) {
+      declineCallBtn.onclick = async () => {
+        incomingCallModal.classList.add('hidden');
+        if (activeCallControlId) {
+          await fetch('/api/telecom/hangup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ callControlId: activeCallControlId })
+          });
+          activeCallControlId = null;
+        }
+      };
+    }
+
+    // Outbound Recruiter Call Button
+    if (startOutboundCallBtn && outboundNumberInput) {
+      startOutboundCallBtn.onclick = async () => {
+        const to = outboundNumberInput.value.trim();
+        if (!to) return alert('Please enter a valid phone number');
+
+        startOutboundCallBtn.disabled = true;
+        startOutboundCallBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Dialing Recruiter...';
+        if (window.lucide) lucide.createIcons();
+
+        try {
+          const res = await fetch('/api/telecom/outbound', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to, roomId })
+          });
+          const d = await res.json();
+          if (d.ok) {
+            phoneStatusText.textContent = `Dialing ${to}...`;
+          } else {
+            alert(d.error || 'Failed to place call');
+          }
+        } catch (err) {
+          alert('Call error: ' + err.message);
+        } finally {
+          startOutboundCallBtn.disabled = false;
+          startOutboundCallBtn.innerHTML = '<i data-lucide="phone-call" class="w-4 h-4"></i> Call Recruiter Now';
+          if (window.lucide) lucide.createIcons();
+        }
+      };
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    connectSocket();
+    if (window.lucide) lucide.createIcons();
+  </script>
+</body>
+</html>

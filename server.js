@@ -53,8 +53,17 @@ app.get('/landing', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'landing.html'));
 });
 
+// Dedicated Recruiter Phone Call Copilot (No stealth install required, 100% web prompter for phone calls)
+app.get('/recruiter', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'recruiter.html'));
+});
+
 // 2. Main Copilot Workspace Application
 app.get('/app', (req, res) => {
+  // If user requests recruiter mode directly, route to dedicated recruiter space
+  if (req.query.mode === 'recruiter') {
+    return res.sendFile(path.join(__dirname, 'public', 'recruiter.html'));
+  }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -469,6 +478,48 @@ app.post('/api/telecom/hangup', async (req, res) => {
   }
 
   res.json({ ok: true, message: 'Call hung up' });
+});
+
+// UI Action: Outbound Recruiter Call (Direct from Browser)
+app.post('/api/telecom/outbound', async (req, res) => {
+  const { to, roomId } = req.body;
+  if (!to) return res.status(400).json({ error: 'Phone number is required' });
+
+  const telnyxApiKey = process.env.TELNYX_API_KEY;
+  const fromNumber = process.env.TELNYX_PHONE_NUMBER || '+18007526250';
+  const targetRoomId = (roomId || 'main_room').trim();
+
+  if (!telnyxApiKey || telnyxApiKey === 'YOUR_TELNYX_API_KEY') {
+    return res.status(400).json({
+      error: 'Telnyx API key not configured. Add TELNYX_API_KEY in .env to place real outbound calls.'
+    });
+  }
+
+  try {
+    const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream?roomId=${encodeURIComponent(targetRoomId)}`;
+    const telnyxRes = await fetch('https://api.telnyx.com/v2/calls', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${telnyxApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        connection_id: process.env.TELNYX_CONNECTION_ID,
+        to: to,
+        from: fromNumber,
+        stream_track: 'inbound_track',
+        stream_url: streamUrl
+      })
+    });
+    const telnyxData = await telnyxRes.json();
+    if (!telnyxRes.ok) {
+      return res.status(400).json({ error: telnyxData.errors?.[0]?.detail || 'Telnyx dial error' });
+    }
+
+    res.json({ ok: true, data: telnyxData.data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // UI Action: Simulate 5-Minute Interactive Recruiter Demo Call
