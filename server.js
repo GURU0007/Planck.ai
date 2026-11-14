@@ -344,12 +344,12 @@ app.get('/api/telecom/config', (req, res) => {
   });
 });
 
-// Twilio Incoming Call Webhook (TwiML Stream)
+// Twilio Incoming Call Webhook (Ringing Stage - Waits for candidate to click Answer Call button)
 app.post(['/api/twilio/voice', '/api/telecom/twilio/voice'], (req, res) => {
   const from = req.body?.From || 'Recruiter Call';
   const to = req.body?.To || TWILIO_MASTER_DID;
   const callSid = req.body?.CallSid || 'call_' + Date.now();
-  console.log(`[Twilio Voice Webhook] Incoming Call: ${callSid} | From: ${from} | To: ${to}`);
+  console.log(`[Twilio Voice Webhook] Incoming Call Ringing: ${callSid} | From: ${from} | To: ${to}`);
 
   let targetRoomId = 'main_room';
   for (const [rId, roomObj] of liveRooms.entries()) {
@@ -364,11 +364,11 @@ app.post(['/api/twilio/voice', '/api/telecom/twilio/voice'], (req, res) => {
     from,
     to,
     roomId: targetRoomId,
-    status: 'answered',
+    status: 'ringing',
     startTime: Date.now()
   });
 
-  // Notify recruiter dashboard immediately!
+  // Notify recruiter dashboard with incoming ring alert modal!
   broadcastToRoom(targetRoomId, {
     type: 'telecom_incoming_call',
     callControlId: callSid,
@@ -378,23 +378,11 @@ app.post(['/api/twilio/voice', '/api/telecom/twilio/voice'], (req, res) => {
     timestamp: new Date().toISOString()
   });
 
-  broadcastToRoom(targetRoomId, {
-    type: 'telecom_call_answered',
-    callControlId: callSid,
-    from
-  });
-
-  const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream`;
-
-  // TwiML: Connect Twilio Inbound Audio Media Stream
+  // Play normal US telephone ringtone to recruiter while waiting for candidate to click "Answer Call"!
+  const ringUrl = (process.env.PUBLIC_URL || 'https://planck-ai.onrender.com') + '/ringtone.wav';
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Connect>
-    <Stream url="${streamUrl}" track="inbound_track">
-      <Parameter name="callSid" value="${callSid}" />
-      <Parameter name="roomId" value="${targetRoomId}" />
-    </Stream>
-  </Connect>
+  <Play loop="10">${ringUrl}</Play>
 </Response>`;
 
   res.setHeader('Content-Type', 'text/xml');
@@ -518,11 +506,58 @@ app.post('/api/telecom/webhook', async (req, res) => {
   res.sendStatus(200);
 });
 
-// UI Action: Accept Incoming Call
+// UI Action: Accept Incoming Call (Manual Answer Button on Dashboard)
 app.post('/api/telecom/answer', async (req, res) => {
   const { callControlId } = req.body;
   if (!callControlId) return res.status(400).json({ error: 'callControlId is required' });
 
+  const callData = activeTelecomCalls.get(callControlId);
+  const targetRoomId = callData?.roomId || 'main_room';
+
+  if (callControlId.startsWith('CA')) {
+    // Twilio Call: Transition from Ringing to Live Inbound Media Stream
+    try {
+      const authHeader = 'Basic ' + Buffer.from(`${TWILIO_SID}:${TWILIO_AUTH}`).toString('base64');
+      const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream`;
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="${streamUrl}" track="inbound_track">
+      <Parameter name="callSid" value="${callControlId}" />
+      <Parameter name="roomId" value="${targetRoomId}" />
+    </Stream>
+  </Connect>
+</Response>`;
+
+      const params = new URLSearchParams();
+      params.append('Twiml', twiml);
+
+      const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_SID}/Calls/${callControlId}.json`, {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      });
+
+      console.log(`[Twilio Answer via Button] Call ${callControlId} answered. Status: ${twilioRes.status}`);
+      if (callData) callData.status = 'answered';
+
+      broadcastToRoom(targetRoomId, {
+        type: 'telecom_call_answered',
+        callControlId,
+        from: callData?.from || 'Recruiter'
+      });
+
+      return res.json({ ok: true, message: 'Twilio call answered and media stream connected' });
+    } catch (twErr) {
+      console.error('[Twilio Answer Error]', twErr);
+      return res.status(500).json({ error: twErr.message });
+    }
+  }
+
+  // Telnyx Call Fallback
   try {
     const answerRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`, {
       method: 'POST',
@@ -535,9 +570,8 @@ app.post('/api/telecom/answer', async (req, res) => {
     const answerData = await answerRes.json();
     console.log(`[Telecom Answer] Call answered: ${callControlId}`, answerData);
 
-    // Also immediately trigger media streaming on inbound_track
-    const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream?callControlId=${encodeURIComponent(callControlId)}&roomId=main_room`;
-    const streamRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/streaming_start`, {
+    const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream?callControlId=${encodeURIComponent(callControlId)}&roomId=${encodeURIComponent(targetRoomId)}`;
+    await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/streaming_start`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${TELNYX_MASTER_KEY}`,
@@ -548,8 +582,13 @@ app.post('/api/telecom/answer', async (req, res) => {
         stream_track: 'inbound_track'
       })
     });
-    const streamData = await streamRes.json();
-    console.log(`[Telecom Answer Stream] Streaming initiated:`, streamData);
+
+    if (callData) callData.status = 'answered';
+    broadcastToRoom(targetRoomId, {
+      type: 'telecom_call_answered',
+      callControlId,
+      from: callData?.from || 'Recruiter'
+    });
 
     return res.json({ ok: true, message: 'Call answered via Telnyx' });
   } catch (err) {
@@ -1348,6 +1387,14 @@ CRITICAL FORMAT REQUIREMENTS (PUNCHY BULLETS MODE - SCANABLE IN <2 SECONDS):
       content: `You are an elite Staff Software Engineer providing instant, glanceable interview talking points for a live technical interview. The candidate will speak these points aloud.
 
 ${styleInstructions}
+
+CONVERSATIONAL INTELLIGENCE & INTRO FILTERING:
+1. IGNORE RECRUITER SMALL TALK & INTRODUCTIONS:
+   - Recruiters often begin with conversational filler ("Hi Guru, how are you today? My name is Sarah from Amazon, thanks for taking time to speak with us...").
+   - Completely IGNORE their greeting, company pitch, or small talk. Do NOT say "Hello" back and do NOT repeat their introduction.
+   - Extract the TRUE technical question or architectural inquiry asked at the core of their turn, and answer that directly.
+2. ZERO BULLET POINTS & ZERO LABELS:
+   - Deliver only natural, fluid spoken paragraphs with zero markdown symbols (*, •, -) so the candidate can read continuously.
 
 STT PHONETIC ERROR CORRECTION (MANDATORY):
 1. The question comes from live speech-to-text and often contains phonetic mishearings or filler words:
