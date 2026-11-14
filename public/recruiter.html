@@ -170,17 +170,10 @@
             <h2 class="text-sm sm:text-base font-bold text-white">Instant AI Talking Points (Recruiter Screen)</h2>
           </div>
 
-          <!-- Answer Style Selector -->
-          <div class="flex items-center bg-slate-950/90 rounded-xl p-1 border border-slate-800 text-xs font-semibold">
-            <button id="styleBulletsBtn" onclick="setRecruiterAnswerStyle('bullets')" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs" title="3 concise verbal talking points (<15 words each)">
-              <span>⚡ Bullets</span>
-            </button>
-            <button id="styleDirectBtn" onclick="setRecruiterAnswerStyle('direct')" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1" title="Direct 1-2 sentence response">
-              <span>🎯 Direct</span>
-            </button>
-            <button id="styleDeepBtn" onclick="setRecruiterAnswerStyle('deep')" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1" title="Deep STAR story & architecture breakdown">
-              <span>📐 Deep STAR</span>
-            </button>
+          <!-- Deep STAR Badge -->
+          <div class="flex items-center bg-indigo-950/70 border border-indigo-700/60 rounded-xl px-3 py-1 text-xs font-bold text-indigo-300 gap-1.5 shadow-sm">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>📐 Deep STAR Method</span>
           </div>
         </div>
 
@@ -324,7 +317,7 @@
     const roomId = 'main_room';
     let socket = null;
     let activeCallControlId = null;
-    let currentStyle = 'bullets';
+    let currentStyle = 'deep';
     let pastTurns = [];
     let callTimerInterval = null;
     let callSeconds = 0;
@@ -434,23 +427,11 @@
       };
     }
 
-    // Answer Style Selector
+    // Answer Style Default: Deep STAR
     function setRecruiterAnswerStyle(style) {
-      currentStyle = style;
-      const bBtn = document.getElementById('styleBulletsBtn');
-      const dBtn = document.getElementById('styleDirectBtn');
-      const deepBtn = document.getElementById('styleDeepBtn');
-
-      [bBtn, dBtn, deepBtn].forEach(btn => {
-        btn.className = 'px-2.5 py-1 rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1';
-      });
-
-      if (style === 'bullets') bBtn.className = 'px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs';
-      if (style === 'direct') dBtn.className = 'px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs';
-      if (style === 'deep') deepBtn.className = 'px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs';
-
+      currentStyle = style || 'deep';
       if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ type: 'set_answer_style', style }));
+        socket.send(JSON.stringify({ type: 'set_answer_style', style: currentStyle }));
       }
     }
 
@@ -464,6 +445,8 @@
         console.log('[Recruiter Dashboard] Connected to WebSocket');
         phoneStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
         phoneStatusText.textContent = 'Carrier Bridge Ready';
+        // Ensure Deep STAR mode is always registered with server
+        socket.send(JSON.stringify({ type: 'set_answer_style', style: 'deep' }));
       };
 
       socket.onmessage = (event) => {

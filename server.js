@@ -846,7 +846,7 @@ wss.on('connection', (ws, req) => {
     console.log(`[Spectator WS] Connected to room: "${roomId}"`);
     let room = liveRooms.get(roomId);
     if (!room) {
-      room = { hostWs: null, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: null, answerStyle: 'bullets' };
+      room = { hostWs: null, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: null, answerStyle: roomId === 'main_room' ? 'deep' : 'bullets' };
       liveRooms.set(roomId, room);
     }
 
@@ -1285,19 +1285,19 @@ async function generateInstantAnswer(rawQuestion, ws, groq, roomId) {
   });
 
   const optimizedContext = getOptimizedCandidateContext(candidateContext);
-  const currentStyle = (room && room.answerStyle) || 'bullets';
+  const currentStyle = (room && room.answerStyle) || (roomId === 'main_room' ? 'deep' : 'bullets');
   let styleInstructions = '';
   let maxTokensToGenerate = 160;
 
   if (currentStyle === 'deep') {
-    maxTokensToGenerate = 240;
+    maxTokensToGenerate = 280;
     styleInstructions = `
-CRITICAL FORMAT REQUIREMENTS (DEEP ARCHITECTURE MODE):
-• DIRECT ANSWER: 1 concise sentence answering the core technical distinction directly.
-• 3 DETAILED TALKING POINTS:
-  - Architecture & Runtime Mechanics: Under the hood execution, memory management, threads, or IoC lifecycle.
-  - Real-World Best Practice: Enterprise design pattern or code configuration rule.
-• Keep total length under 125 words.`;
+CRITICAL FORMAT REQUIREMENTS (DEEP STAR INTERVIEW METHOD):
+Structure the verbal answer using the proven STAR framework for senior recruiter screening:
+• **Situation & Task**: 1 crisp, authoritative sentence setting the context and engineering challenge.
+• **Action**: 2 punchy bullet points covering concrete architectural actions, technologies used, and execution decisions.
+• **Result**: 1 quantifiable impact sentence (e.g. 40% latency reduction, zero downtime migration, millions of req/sec scale).
+• Keep total length under 115 words so it is immediately readable and conversational.`;
   } else if (currentStyle === 'direct') {
     maxTokensToGenerate = 90;
     styleInstructions = `
