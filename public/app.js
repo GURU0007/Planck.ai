@@ -694,7 +694,8 @@ function updateShareModalInfo() {
   }
   const downloadBtns = document.querySelectorAll('a[href^="/download/stealth"]');
   downloadBtns.forEach(btn => {
-    btn.href = `/download/stealth?room=${encodeURIComponent(hostRoomId)}`;
+    const isMac = btn.href.includes('os=mac') || btn.getAttribute('download')?.endsWith('.command');
+    btn.href = `/download/stealth?os=${isMac ? 'mac' : 'windows'}&room=${encodeURIComponent(hostRoomId)}`;
   });
 }
 

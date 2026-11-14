@@ -52,12 +52,48 @@ app.get('/live', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live.html'));
 });
 
-// Download Standalone Stealth Launcher (.bat) configured for user's room (LockedIn AI style)
-app.get('/download/stealth', (req, res) => {
-  const host = req.get('host') || 'planck-ai.onrender.com';
-  const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+// Download Standalone Stealth Launcher (.bat for Windows, .command for Mac) configured for user's room
+app.get(['/download/stealth', '/download/stealth-win', '/download/stealth-mac'], (req, res) => {
+  // Always ensure end-users connect to production URL (not local development host)
+  let baseUrl = 'https://planck-ai.onrender.com';
+  const reqHost = req.get('host') || '';
+  if (reqHost && !reqHost.includes('localhost') && !reqHost.includes('127.0.0.1')) {
+    const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+    baseUrl = `${protocol}://${reqHost}`;
+  }
   const roomId = (req.query.room || 'main_room').trim();
-  const targetUrl = `${protocol}://${host}/live?room=${encodeURIComponent(roomId)}`;
+  const targetUrl = `${baseUrl}/live?room=${encodeURIComponent(roomId)}`;
+  const isMac = req.query.os === 'mac' || req.path === '/download/stealth-mac';
+
+  if (isMac) {
+    const macContent = `#!/bin/bash
+# Planck.ai Stealth Copilot Launcher for macOS (Zero install required)
+TARGET_URL="${targetUrl}"
+
+echo "========================================================"
+echo " [Planck.ai] Launching Standalone Stealth Copilot..."
+echo " - Connecting to: $TARGET_URL"
+echo " - Distraction-free standalone app window"
+echo "========================================================"
+
+if [ -d "/Applications/Google Chrome.app" ]; then
+    open -na "Google Chrome" --args --app="$TARGET_URL" --window-size=580,640
+elif [ -d "/Applications/Microsoft Edge.app" ]; then
+    open -na "Microsoft Edge" --args --app="$TARGET_URL" --window-size=580,640
+elif [ -d "/Applications/Brave Browser.app" ]; then
+    open -na "Brave Browser" --args --app="$TARGET_URL" --window-size=580,640
+else
+    open "$TARGET_URL"
+fi
+
+# Close Terminal window cleanly
+osascript -e 'tell application "Terminal" to close first window' &>/dev/null &
+exit 0
+`;
+    res.setHeader('Content-Disposition', 'attachment; filename="planck-stealth.command"');
+    res.setHeader('Content-Type', 'application/x-sh');
+    return res.send(macContent);
+  }
 
   const batContent = `@echo off
 title Planck.ai Stealth Copilot
@@ -65,17 +101,46 @@ set "TARGET_URL=${targetUrl}"
 
 echo ========================================================
 echo  [Planck.ai] Launching Standalone Stealth Q^&A Copilot...
-echo  - Target: %TARGET_URL%
-echo  - Invisible to Zoom, Teams ^& Google Meet screen-share
+echo  - Connecting to: %TARGET_URL%
+echo  - Standalone HUD window (Zero local install required)
 echo ========================================================
 
-if exist "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" (
-    start "" "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --app="%TARGET_URL%" --window-size=580,640
-) else if exist "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" (
-    start "" "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" --app="%TARGET_URL%" --window-size=580,640
-) else (
-    start "" "%TARGET_URL%"
+:: Check Chrome (64-bit, 32-bit, Local AppData per-user)
+if exist "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe" (
+    start "" "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe" --app="%TARGET_URL%" --window-size=580,640
+    exit
 )
+if exist "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe" (
+    start "" "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe" --app="%TARGET_URL%" --window-size=580,640
+    exit
+)
+if exist "%LocalAppData%\\Google\\Chrome\\Application\\chrome.exe" (
+    start "" "%LocalAppData%\\Google\\Chrome\\Application\\chrome.exe" --app="%TARGET_URL%" --window-size=580,640
+    exit
+)
+
+:: Check Microsoft Edge (Built into 100% of Windows 10 & 11 PCs)
+if exist "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" (
+    start "" "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe" --app="%TARGET_URL%" --window-size=580,640
+    exit
+)
+if exist "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe" (
+    start "" "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe" --app="%TARGET_URL%" --window-size=580,640
+    exit
+)
+
+:: Check Brave Browser
+if exist "%ProgramFiles%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" (
+    start "" "%ProgramFiles%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" --app="%TARGET_URL%" --window-size=580,640
+    exit
+)
+if exist "%LocalAppData%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" (
+    start "" "%LocalAppData%\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" --app="%TARGET_URL%" --window-size=580,640
+    exit
+)
+
+:: Fallback: Open default system browser directly
+start "" "%TARGET_URL%"
 exit
 `;
 
