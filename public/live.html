@@ -4,23 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>planck.ai — Interview Copilot</title>
-  <!-- PWA Manifest & App Meta -->
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" type="image/svg+xml" href="/icon.svg">
-  <meta name="theme-color" content="#020617">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Client-side PDF Parser for Resume Upload -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-  </script>
   <style>
     /* Dark scrollbars */
     ::-webkit-scrollbar {
@@ -115,30 +102,12 @@
       </button>
     </div>
 
-    <!-- Spectator Status & Utility Controls -->
+    <!-- Spectator Status Controls -->
     <div class="flex items-center gap-1.5 shrink-0">
       <!-- 1-Click Capture Google Meet Audio Button -->
       <button id="liveCaptureMeetBtn" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 transition shrink-0" title="Capture interviewer voice from Google Meet tab (zero candidate mic)">
         <i data-lucide="headphones" class="w-3.5 h-3.5 text-white"></i>
         <span id="liveCaptureBtnText">Capture Google Meet Audio</span>
-      </button>
-
-      <!-- Microphone Mode Alternative Button -->
-      <button id="liveCaptureMicBtn" class="bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition shrink-0" title="Listen to your voice / room microphone">
-        <i data-lucide="mic" class="w-3 h-3 text-emerald-400"></i>
-        <span class="hidden sm:inline">Use Mic</span>
-      </button>
-
-      <!-- Resume / Candidate Profile Modal Trigger -->
-      <button id="openResumeModalBtn" class="bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition shrink-0" title="Upload Resume or Tailor Candidate Profile">
-        <i data-lucide="file-text" class="w-3 h-3 text-emerald-400"></i>
-        <span class="hidden sm:inline">Resume</span>
-      </button>
-
-      <!-- PWA 1-Click Install Button (Chrome / Edge / Mac) -->
-      <button id="pwaInstallBtn" class="hidden bg-slate-900/90 hover:bg-slate-800 border border-emerald-800/80 text-emerald-300 hover:text-emerald-200 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold items-center gap-1 transition shrink-0" title="Install as standalone Native Desktop App">
-        <i data-lucide="download" class="w-3 h-3 text-emerald-400"></i>
-        <span class="hidden sm:inline">Install App</span>
       </button>
 
       <!-- Live Room Badge -->
@@ -147,17 +116,10 @@
         <span id="roomIdDisplay" class="truncate max-w-[80px]">...</span>
       </div>
 
-      <!-- Host Connection & Live Audio VU Meter Indicator -->
+      <!-- Host Connection Indicator -->
       <div id="hostStatusBadge" class="flex items-center gap-1.5 bg-amber-950/60 border border-amber-800/60 text-amber-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0">
         <span id="hostStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
         <span id="hostStatusText" class="hidden xs:inline">Connecting</span>
-        <!-- Dancing VU Meter Bars (Active when sound detected) -->
-        <div id="liveVuMeter" class="hidden items-end gap-0.5 h-3 px-1 py-0.5 bg-black/40 rounded">
-          <span class="vu-bar w-0.5 bg-emerald-400 rounded-full h-1 transition-all duration-75"></span>
-          <span class="vu-bar w-0.5 bg-emerald-400 rounded-full h-1.5 transition-all duration-75"></span>
-          <span class="vu-bar w-0.5 bg-emerald-400 rounded-full h-2 transition-all duration-75"></span>
-          <span class="vu-bar w-0.5 bg-emerald-400 rounded-full h-1 transition-all duration-75"></span>
-        </div>
       </div>
 
       <!-- Always on Top Floating Pin (Document Picture-in-Picture) -->
@@ -226,25 +188,11 @@
     <!-- MAIN CARD: REALTIME INSTANT AI ANSWER & TALKING POINTS -->
     <div class="flex-1 min-h-0 bg-slate-900/90 border border-slate-800/80 rounded-2xl p-3.5 sm:p-5 backdrop-blur-md shadow-lg shadow-black/20 flex flex-col overflow-hidden">
       <!-- Answer Subheader -->
-      <div class="flex items-center justify-between mb-2.5 border-b border-slate-800/80 pb-2.5 shrink-0 flex-wrap gap-2">
+      <div class="flex items-center justify-between mb-2.5 border-b border-slate-800/80 pb-2.5 shrink-0">
         <div class="flex items-center gap-2">
           <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></div>
           <h2 class="text-xs sm:text-sm font-bold text-white">Instant AI Talking Points</h2>
         </div>
-        
-        <!-- Answer Style Selector (Bullets vs Deep vs Direct) -->
-        <div class="flex items-center bg-slate-950/90 rounded-lg p-0.5 border border-slate-800 text-[10px] sm:text-xs font-semibold">
-          <button id="styleBulletsBtn" onclick="setAnswerStyle('bullets')" class="px-2 py-0.5 rounded-md bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs" title="3 concise talking points (<15 words each)">
-            <span>⚡ Bullets</span>
-          </button>
-          <button id="styleDeepBtn" onclick="setAnswerStyle('deep')" class="px-2 py-0.5 rounded-md text-slate-400 hover:text-slate-200 transition flex items-center gap-1" title="Deep architectural trade-offs, scalability & code">
-            <span>📐 Deep</span>
-          </button>
-          <button id="styleDirectBtn" onclick="setAnswerStyle('direct')" class="px-2 py-0.5 rounded-md text-slate-400 hover:text-slate-200 transition flex items-center gap-1" title="Direct 1-2 sentence quick answer">
-            <span>🎯 Direct</span>
-          </button>
-        </div>
-
         <div class="flex items-center gap-2">
           <button id="qaCopyBtn" class="text-xs text-slate-400 hover:text-indigo-400 flex items-center gap-1 font-semibold transition" title="Copy answer">
             <i data-lucide="copy" class="w-3.5 h-3.5"></i> <span class="hidden xs:inline">Copy</span>
@@ -292,94 +240,6 @@
         <div id="qaHistoryList" class="flex-1 overflow-y-auto space-y-2.5 text-xs">
           <!-- Dynamically populated -->
         </div>
-      </div>
-    </div>
-
-    <!-- RESUME & CANDIDATE PROFILE MODAL -->
-    <div id="resumeModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-      <div class="bg-slate-900 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-800 p-5 sm:p-6 space-y-4 text-white">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-800 text-emerald-400 flex items-center justify-center">
-              <i data-lucide="file-text" class="w-4 h-4"></i>
-            </div>
-            <div>
-              <h3 class="font-bold text-white text-sm sm:text-base">Candidate Profile &amp; Resume</h3>
-              <p class="text-[11px] text-slate-400">Personalize AI answers to your real experience &amp; tech stack.</p>
-            </div>
-          </div>
-          <button id="closeResumeModalBtn" class="text-slate-400 hover:text-white p-1">
-            <i data-lucide="x" class="w-4 h-4"></i>
-          </button>
-        </div>
-
-        <!-- 1-Click Upload Zone -->
-        <div id="resumeDropZone" class="border-2 border-dashed border-slate-700 hover:border-emerald-500 rounded-xl p-4 text-center cursor-pointer transition bg-slate-950/50">
-          <input type="file" id="resumeFileInput" accept=".pdf,.txt,.md" class="hidden" />
-          <i data-lucide="upload-cloud" class="w-6 h-6 text-emerald-400 mx-auto mb-1"></i>
-          <p class="text-xs font-semibold text-slate-200">Click or Drag &amp; Drop Resume (.PDF, .TXT)</p>
-          <p class="text-[10px] text-slate-400">Extracts skills &amp; experience automatically in your browser</p>
-        </div>
-
-        <!-- Resume Context Editor -->
-        <div class="space-y-1">
-          <label class="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Profile &amp; Role Summary</label>
-          <textarea id="candidateProfileText" rows="6" placeholder="Paste your target role, years of experience, and key skills..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"></textarea>
-        </div>
-
-        <div class="flex items-center justify-between pt-2 border-t border-slate-800">
-          <span id="resumeSaveStatus" class="text-xs text-emerald-400 font-semibold hidden">✓ Profile updated successfully!</span>
-          <button id="saveResumeContextBtn" class="ml-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-xl text-xs transition shadow-md">
-            Save Profile
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ALWAYS ON TOP & STEALTH GUIDE MODAL -->
-    <div id="alwaysOnTopModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-      <div class="bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl border border-slate-800 p-5 sm:p-6 space-y-4 text-white">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div class="flex items-center gap-2">
-            <div class="w-8 h-8 rounded-lg bg-indigo-950/80 border border-indigo-800 text-indigo-400 flex items-center justify-center">
-              <i data-lucide="pin" class="w-4 h-4"></i>
-            </div>
-            <div>
-              <h3 class="font-bold text-white text-sm sm:text-base">Always-on-Top &amp; Stealth Guide</h3>
-              <p class="text-[11px] text-slate-400">Keep answers visible without losing focus</p>
-            </div>
-          </div>
-          <button id="closeAlwaysOnTopModalBtn" class="text-slate-400 hover:text-white p-1">
-            <i data-lucide="x" class="w-4 h-4"></i>
-          </button>
-        </div>
-
-        <div class="space-y-3 text-xs text-slate-300">
-          <div class="bg-slate-950/80 border border-indigo-900/50 rounded-xl p-3 space-y-1">
-            <strong class="text-indigo-400 flex items-center gap-1.5">
-              <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> Method 1: Floating PiP Prompter
-            </strong>
-            <p class="text-[11px] text-slate-400">Click the <strong>Float</strong> button above (Chrome/Edge 116+). Opens a real, OS-level Picture-in-Picture window that stays on top of Google Meet, Zoom, and VS Code automatically.</p>
-          </div>
-
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-1">
-            <strong class="text-white flex items-center gap-1.5">
-              <i data-lucide="monitor" class="w-3.5 h-3.5 text-emerald-400"></i> Method 2: Windows PowerToys
-            </strong>
-            <p class="text-[11px] text-slate-400">Install free Microsoft PowerToys and press <code class="bg-slate-800 px-1 py-0.5 rounded text-emerald-300">Win + Ctrl + T</code> on this window to pin it Always on Top of any screen.</p>
-          </div>
-
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-1">
-            <strong class="text-white flex items-center gap-1.5">
-              <i data-lucide="shield" class="w-3.5 h-3.5 text-teal-300"></i> Method 3: Invisible Desktop App
-            </strong>
-            <p class="text-[11px] text-slate-400">Run <code>planck-stealth.bat</code> (Windows) or <code>planck-stealth.command</code> (Mac). Both exclude the window from screen capture completely.</p>
-          </div>
-        </div>
-
-        <button onclick="document.getElementById('alwaysOnTopModal').classList.add('hidden')" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl text-xs transition">
-          Got It
-        </button>
       </div>
     </div>
 
@@ -632,28 +492,6 @@
 
     let isHostCapturing = false;
     let activeAnswerId = null;
-    let lastReceivedTokenIndex = -1;
-    let activeSocket = null;
-    let currentAnswerStyle = 'bullets';
-    let pipActiveWindow = null;
-    let deferredPwaPrompt = null;
-
-    function setAnswerStyle(style, notifyServer = true) {
-      currentAnswerStyle = style;
-      ['styleBulletsBtn', 'styleDeepBtn', 'styleDirectBtn'].forEach(id => {
-        const btn = document.getElementById(id);
-        if (!btn) return;
-        btn.className = 'px-2 py-0.5 rounded-md text-slate-400 hover:text-slate-200 transition flex items-center gap-1';
-      });
-      const activeBtnId = style === 'deep' ? 'styleDeepBtn' : (style === 'direct' ? 'styleDirectBtn' : 'styleBulletsBtn');
-      const activeBtn = document.getElementById(activeBtnId);
-      if (activeBtn) {
-        activeBtn.className = 'px-2 py-0.5 rounded-md bg-emerald-600 text-white font-bold transition flex items-center gap-1 shadow-xs';
-      }
-      if (notifyServer && activeSocket && activeSocket.readyState === WebSocket.OPEN) {
-        activeSocket.send(JSON.stringify({ type: 'set_answer_style', style }));
-      }
-    }
 
     function connectSpectator() {
       if (isHostCapturing) return; // Do not connect spectator if this client is actively capturing audio as host
@@ -662,12 +500,10 @@
       const wsUrl = `${protocol}//${window.location.host}/ws?spectator=true&roomId=${encodeURIComponent(roomId)}&pin=${encodeURIComponent(roomPin)}`;
 
       specWs = new WebSocket(wsUrl);
-      activeSocket = specWs;
 
       let specHeartbeat = null;
       specWs.onopen = () => {
         console.log('[Spectator] Connected to room:', roomId);
-        activeSocket = specWs;
         hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
         hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0';
         hostStatusText.textContent = 'Listening to Call';
@@ -682,7 +518,7 @@
       specWs.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          handleSpectatorMessage(data, specWs);
+          handleSpectatorMessage(data);
         } catch (e) {
           console.error('[Spectator] Parse error:', e);
         }
@@ -700,13 +536,7 @@
       };
     }
 
-    function handleSpectatorMessage(data, sourceWs = null) {
-      // Discard any message received from an orphaned or superseded socket
-      if (sourceWs && activeSocket && sourceWs !== activeSocket) {
-        try { sourceWs.close(); } catch(e) {}
-        return;
-      }
-
+    function handleSpectatorMessage(data) {
       if (data.type === 'pin_required') {
         pinModal.classList.remove('hidden');
         pinError.classList.remove('hidden');
@@ -716,7 +546,6 @@
       if (data.type === 'session_init') {
         pinModal.classList.add('hidden');
         if (data.roomId) roomIdDisplay.textContent = data.roomId;
-        if (data.answerStyle) setAnswerStyle(data.answerStyle, false);
         if (data.hostActive) {
           hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
           hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0';
@@ -729,10 +558,6 @@
         }
       }
 
-      if (data.type === 'answer_style_updated') {
-        if (data.style) setAnswerStyle(data.style, false);
-      }
-
       // LIVE INTERVIEWER SPEECH
       if (data.type === 'transcript') {
         handleIncomingTranscript(data.text, data.isFinal);
@@ -741,7 +566,6 @@
       // INSTANT AI ANSWER STREAMING
       if (data.type === 'answer_start') {
         activeAnswerId = data.answerId || ('ans_' + Date.now());
-        lastReceivedTokenIndex = -1;
         currentAiAnswer = '';
         currentQuestion = data.question;
 
@@ -757,35 +581,15 @@
         // Update Answer Card
         qaAnswerStatusBadge.className = 'text-[10px] sm:text-xs bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 font-bold px-2.5 py-0.5 rounded-full animate-pulse';
         qaAnswerStatusBadge.textContent = '⚡ Streaming Answer (~120ms)...';
-
-        // Update Floating PiP Prompter if active
-        if (pipActiveWindow && pipActiveWindow.document) {
-          const pipQ = pipActiveWindow.document.getElementById('pipQuestion');
-          const pipA = pipActiveWindow.document.getElementById('pipAnswer');
-          if (pipQ) pipQ.textContent = `"${data.question}"`;
-          if (pipA) pipA.innerHTML = '<span style="color:#818cf8; font-style:italic;">⚡ Streaming answer...</span>';
-        }
       }
 
       if (data.type === 'answer_token') {
         // Drop any stale tokens from old generations to prevent interleaving
         if (data.answerId && activeAnswerId && data.answerId !== activeAnswerId) return;
 
-        // Token Index Deduplication: Guarantees no token is ever appended twice!
-        if (typeof data.tokenIndex === 'number') {
-          if (data.tokenIndex <= lastReceivedTokenIndex) return;
-          lastReceivedTokenIndex = data.tokenIndex;
-        }
-
         currentAiAnswer += data.token;
         renderFormattedQaAnswer(currentAiAnswer);
         qaAnswerContent.scrollTop = qaAnswerContent.scrollHeight;
-
-        // Update Floating PiP Prompter if active
-        if (pipActiveWindow && pipActiveWindow.document) {
-          const pipA = pipActiveWindow.document.getElementById('pipAnswer');
-          if (pipA) pipA.innerHTML = qaAnswerContent.innerHTML;
-        }
       }
 
       if (data.type === 'answer_done') {
@@ -1033,7 +837,6 @@
 
     const liveCaptureMeetBtn = document.getElementById('liveCaptureMeetBtn');
     const liveCaptureBtnText = document.getElementById('liveCaptureBtnText');
-    const liveCaptureMicBtn = document.getElementById('liveCaptureMicBtn');
     const guideCaptureBtn = document.getElementById('guideCaptureBtn');
     const liveStepGuide = document.getElementById('liveStepGuide');
 
@@ -1046,60 +849,39 @@
         if (isCapturingAudio) {
           stopLiveCapture();
         } else {
-          await startLiveCapture('tab');
+          await startLiveCapture();
         }
       });
     }
 
-    if (liveCaptureMicBtn) {
-      liveCaptureMicBtn.addEventListener('click', async () => {
-        if (isCapturingAudio) {
-          stopLiveCapture();
-        } else {
-          await startLiveCapture('mic');
-        }
-      });
-    }
-
-    async function startLiveCapture(sourceType = 'tab') {
+    async function startLiveCapture() {
       try {
-        console.log('[Live Capture] Requesting audio mode:', sourceType);
+        console.log('[Live Capture] Requesting Google Meet tab audio...');
+        liveAudioStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: {
+            channelCount: 1,
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          }
+        });
 
-        if (sourceType === 'mic') {
-          // 🎙️ Direct Microphone Capture
-          liveAudioStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              channelCount: 1,
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-            }
-          });
-        } else {
-          // 🎧 Google Meet Tab / System Loopback Audio
-          liveAudioStream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: {
-              channelCount: 1,
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false,
-            }
-          });
-        }
-
+        // Keep video track active without rendering it so Chromium does not kill the audio pipeline
         const audioTracks = liveAudioStream.getAudioTracks();
         if (audioTracks.length === 0) {
-          alert("Audio was not shared!\n\nWhen selecting 'Chrome Tab' or 'Entire Screen' in the popup, make sure to check the box 'Also share tab audio' / 'Share system audio'.");
+          alert("Audio was not shared!\n\nWhen selecting 'Entire Screen' or 'Chrome Tab' in the popup, make sure to check the box 'Share system audio' / 'Also share tab audio'.");
           stopLiveCapture();
           return;
         }
 
         // Listen for user clicking 'Stop sharing' on Chrome's floating bar
-        audioTracks[0].onended = () => {
-          console.log('[Live Capture] Audio track ended by user');
-          stopLiveCapture();
-        };
+        liveAudioStream.getTracks().forEach(track => {
+          track.onended = () => {
+            console.log('[Live Capture] Track ended by user');
+            stopLiveCapture();
+          };
+        });
 
         liveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         await liveAudioCtx.resume();
@@ -1122,35 +904,21 @@
 
         liveHostWs = new WebSocket(wsUrl);
         liveHostWs.binaryType = 'arraybuffer';
-        activeSocket = liveHostWs;
 
         liveHostWs.onopen = () => {
           console.log('[Live Capture] Host WebSocket active! Setting up audio processor...');
-          activeSocket = liveHostWs;
           setupLiveAudioProcessing();
 
           isCapturingAudio = true;
-          const isMic = sourceType === 'mic';
-
-          liveCaptureMeetBtn.className = isMic 
-            ? 'bg-slate-900/90 hover:bg-slate-800 text-slate-400 font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 border border-slate-800 transition shrink-0'
-            : 'bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/25 transition shrink-0';
-          liveCaptureBtnText.textContent = isMic ? 'Capture Google Meet' : 'Stop Capturing Meet';
-
-          if (liveCaptureMicBtn) {
-            liveCaptureMicBtn.className = isMic 
-              ? 'bg-rose-600 hover:bg-rose-500 text-white font-bold px-2 sm:px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 shadow-md shadow-rose-600/25 transition shrink-0'
-              : 'bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-400 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition shrink-0';
-          }
+          liveCaptureMeetBtn.className = 'bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/25 transition shrink-0';
+          liveCaptureBtnText.textContent = 'Stop Capturing Meet';
 
           hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
           hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0';
-          hostStatusText.textContent = isMic ? 'Microphone Active' : 'Meet Audio Active';
+          hostStatusText.textContent = 'Meet Audio Active';
 
           if (liveStepGuide) {
-            liveStepGuide.innerHTML = isMic 
-              ? '<span class="text-emerald-400 font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Microphone Active: Listening to your voice.</span>'
-              : '<span class="text-emerald-400 font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Capturing Google Meet audio in real time. Your microphone is completely ignored.</span>';
+            liveStepGuide.innerHTML = '<span class="text-emerald-400 font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Capturing Google Meet audio in real time. Your microphone is completely ignored.</span>';
           }
           if (window.lucide) lucide.createIcons();
         };
@@ -1158,7 +926,7 @@
         liveHostWs.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
-            handleSpectatorMessage(data, liveHostWs); // Feed questions & instant answers directly to HUD!
+            handleSpectatorMessage(data); // Feed questions & instant answers directly to HUD!
           } catch (e) {
             console.error('[Live Capture] Parse error:', e);
           }
@@ -1168,8 +936,13 @@
           if (isCapturingAudio) stopLiveCapture();
         };
 
+        audioTracks[0].onended = () => {
+          console.log('[Live Capture] Google Meet tab audio track ended by user');
+          stopLiveCapture();
+        };
+
       } catch (err) {
-        console.warn('[Live Capture] Capture cancelled or error:', err);
+        console.warn('[Live Capture] Tab capture cancelled or error:', err);
         if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
           alert('Audio Capture Notice: ' + (err.message || 'Unable to capture audio.'));
         }
@@ -1189,7 +962,8 @@
       liveProcessor.connect(muteGain);
       muteGain.connect(liveAudioCtx.destination);
 
-      const SILENCE_THRESHOLD_RMS = 0.0015; // Noise floor for ambient silence
+      let silentFramesCount = 0;
+      const SILENCE_THRESHOLD_RMS = 0.0025; // Noise floor for ambient silence
 
       liveProcessor.onaudioprocess = (e) => {
         if (!isCapturingAudio || !liveHostWs || liveHostWs.readyState !== WebSocket.OPEN) return;
@@ -1247,10 +1021,6 @@
         liveCaptureBtnText.textContent = 'Capture Google Meet Audio';
       }
 
-      if (liveCaptureMicBtn) {
-        liveCaptureMicBtn.className = 'bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition shrink-0';
-      }
-
       if (liveStepGuide) {
         liveStepGuide.innerHTML = `
           <div class="flex items-center gap-1.5 flex-wrap">
@@ -1266,222 +1036,6 @@
       // Reconnect spectator WS cleanly after host capture stops
       setTimeout(connectSpectator, 150);
       if (window.lucide) lucide.createIcons();
-    }
-
-    // ==========================================
-    // 1. PWA REGISTRATION & DESKTOP INSTALL
-    // ==========================================
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-
-    const pwaInstallBtn = document.getElementById('pwaInstallBtn');
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPwaPrompt = e;
-      if (pwaInstallBtn) pwaInstallBtn.classList.remove('hidden');
-    });
-
-    if (pwaInstallBtn) {
-      pwaInstallBtn.addEventListener('click', () => {
-        if (deferredPwaPrompt) {
-          deferredPwaPrompt.prompt();
-          deferredPwaPrompt.userChoice.then(() => {
-            deferredPwaPrompt = null;
-            pwaInstallBtn.classList.add('hidden');
-          });
-        } else {
-          alert('To install Planck.ai as a desktop app:\n\n• On Chrome/Edge: Click the Install icon in the address bar.\n• On Mac Safari: Select File > "Add to Dock".');
-        }
-      });
-    }
-
-    // ==========================================
-    // 2. ALWAYS-ON-TOP & FLOATING PIP WINDOW
-    // ==========================================
-    const pipFloatBtn = document.getElementById('pipFloatBtn');
-    const alwaysOnTopModal = document.getElementById('alwaysOnTopModal');
-    const closeAlwaysOnTopModalBtn = document.getElementById('closeAlwaysOnTopModalBtn');
-
-    if (closeAlwaysOnTopModalBtn) {
-      closeAlwaysOnTopModalBtn.addEventListener('click', () => alwaysOnTopModal.classList.add('hidden'));
-    }
-
-    async function toggleDocumentPip() {
-      if ('documentPictureInPicture' in window) {
-        try {
-          if (pipActiveWindow) {
-            pipActiveWindow.close();
-            pipActiveWindow = null;
-            return;
-          }
-
-          const pipWin = await window.documentPictureInPicture.requestWindow({ width: 520, height: 420 });
-          const style = pipWin.document.createElement('style');
-          style.textContent = `
-            * { box-sizing: border-box; }
-            body { background: #020617; color: #f8fafc; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 12px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-            ::-webkit-scrollbar { width: 4px; }
-            ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-            .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e293b; padding-bottom: 6px; margin-bottom: 8px; shrink: 0; }
-            .badge { font-size: 11px; font-weight: bold; color: #10b981; display: flex; align-items: center; gap: 6px; }
-            .dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
-            .question-box { font-size: 12px; font-weight: bold; color: #a5b4fc; margin-bottom: 8px; min-height: 28px; line-height: 1.3; }
-            .answer-box { flex: 1; overflow-y: auto; font-size: 13px; line-height: 1.5; color: #e2e8f0; }
-            strong { color: #ffffff; font-weight: 700; }
-          `;
-          pipWin.document.head.appendChild(style);
-
-          pipWin.document.body.innerHTML = `
-            <div class="header">
-              <div class="badge">
-                <span class="dot"></span>
-                <span>Planck.ai Always-on-Top</span>
-              </div>
-              <span style="font-size:10px; color:#64748b;">Floating HUD</span>
-            </div>
-            <div id="pipQuestion" class="question-box">${currentQuestion ? `"${escapeHtml(currentQuestion)}"` : 'Listening for interviewer question...'}</div>
-            <div id="pipAnswer" class="answer-box">${qaAnswerContent ? qaAnswerContent.innerHTML : 'Instant talking points will stream here...'}</div>
-          `;
-
-          pipActiveWindow = pipWin;
-          pipWin.addEventListener('pagehide', () => { pipActiveWindow = null; });
-          return;
-        } catch (e) {
-          console.warn('[PiP] Document PiP failed:', e);
-        }
-      }
-
-      // Fallback: show instructions modal
-      if (alwaysOnTopModal) alwaysOnTopModal.classList.remove('hidden');
-    }
-
-    if (pipFloatBtn) {
-      pipFloatBtn.addEventListener('click', toggleDocumentPip);
-    }
-
-    // ==========================================
-    // 3. CANDIDATE PROFILE & RESUME PARSER
-    // ==========================================
-    const openResumeModalBtn = document.getElementById('openResumeModalBtn');
-    const closeResumeModalBtn = document.getElementById('closeResumeModalBtn');
-    const resumeModal = document.getElementById('resumeModal');
-    const resumeDropZone = document.getElementById('resumeDropZone');
-    const resumeFileInput = document.getElementById('resumeFileInput');
-    const candidateProfileText = document.getElementById('candidateProfileText');
-    const saveResumeContextBtn = document.getElementById('saveResumeContextBtn');
-    const resumeSaveStatus = document.getElementById('resumeSaveStatus');
-
-    // Fetch existing candidate profile on load
-    fetch('/api/context')
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.context && candidateProfileText) {
-          candidateProfileText.value = data.context;
-        }
-      })
-      .catch(() => {});
-
-    if (openResumeModalBtn && resumeModal) {
-      openResumeModalBtn.addEventListener('click', () => resumeModal.classList.remove('hidden'));
-    }
-    if (closeResumeModalBtn && resumeModal) {
-      closeResumeModalBtn.addEventListener('click', () => resumeModal.classList.add('hidden'));
-    }
-
-    if (resumeDropZone && resumeFileInput) {
-      resumeDropZone.addEventListener('click', () => resumeFileInput.click());
-      resumeDropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        resumeDropZone.classList.add('border-emerald-500', 'bg-emerald-950/20');
-      });
-      ['dragleave', 'dragend'].forEach(ev => {
-        resumeDropZone.addEventListener(ev, () => {
-          resumeDropZone.classList.remove('border-emerald-500', 'bg-emerald-950/20');
-        });
-      });
-      resumeDropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        resumeDropZone.classList.remove('border-emerald-500', 'bg-emerald-950/20');
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-          parseResumeFile(e.dataTransfer.files[0]);
-        }
-      });
-      resumeFileInput.addEventListener('change', (e) => {
-        if (e.target.files && e.target.files[0]) {
-          parseResumeFile(e.target.files[0]);
-        }
-      });
-    }
-
-    async function parseResumeFile(file) {
-      if (!file) return;
-      if (resumeSaveStatus) {
-        resumeSaveStatus.textContent = 'Extracting resume text...';
-        resumeSaveStatus.className = 'text-xs text-indigo-400 font-semibold';
-        resumeSaveStatus.classList.remove('hidden');
-      }
-
-      try {
-        let extracted = '';
-        if (file.name.toLowerCase().endsWith('.pdf') && window.pdfjsLib) {
-          const arrayBuffer = await file.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          let fullPdfText = '';
-          for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            fullPdfText += content.items.map(item => item.str).join(' ') + '\n';
-          }
-          extracted = fullPdfText;
-        } else {
-          extracted = await file.text();
-        }
-
-        if (extracted && extracted.trim()) {
-          const condensed = extracted.trim().slice(0, 2500);
-          if (candidateProfileText) candidateProfileText.value = `Candidate Resume Profile:\n${condensed}`;
-          if (resumeSaveStatus) {
-            resumeSaveStatus.textContent = '✓ Resume extracted! Click Save Profile to apply.';
-            resumeSaveStatus.className = 'text-xs text-emerald-400 font-semibold';
-          }
-        }
-      } catch (err) {
-        if (resumeSaveStatus) {
-          resumeSaveStatus.textContent = 'Failed to extract text. You can paste your profile directly.';
-          resumeSaveStatus.className = 'text-xs text-rose-400 font-semibold';
-        }
-      }
-    }
-
-    if (saveResumeContextBtn && candidateProfileText) {
-      saveResumeContextBtn.addEventListener('click', async () => {
-        const val = candidateProfileText.value.trim();
-        if (!val) return;
-        saveResumeContextBtn.disabled = true;
-        try {
-          const res = await fetch('/api/context', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ context: val })
-          });
-          const json = await res.json();
-          if (json.ok) {
-            if (resumeSaveStatus) {
-              resumeSaveStatus.textContent = '✓ Profile saved! Answers will tailor to your background.';
-              resumeSaveStatus.className = 'text-xs text-emerald-400 font-semibold';
-              resumeSaveStatus.classList.remove('hidden');
-            }
-            setTimeout(() => {
-              if (resumeModal) resumeModal.classList.add('hidden');
-            }, 1200);
-          }
-        } catch (e) {
-          alert('Could not save profile. Please check connection.');
-        } finally {
-          saveResumeContextBtn.disabled = false;
-        }
-      });
     }
 
     // Auto-connect
