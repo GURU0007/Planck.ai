@@ -100,34 +100,6 @@
     </div>
   </header>
 
-  <!-- COLLAPSIBLE CARRIER PAIRING BANNER -->
-  <div id="carrierPairingBanner" class="bg-indigo-950/40 border-b border-indigo-900/50 px-4 sm:px-6 py-3 text-xs text-indigo-200 shrink-0">
-    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-      <div class="space-y-1">
-        <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          <strong class="text-white text-sm">One-Time Carrier Setup (Works on iPhone &amp; Android):</strong>
-          <span class="text-[10px] bg-indigo-900 text-indigo-300 px-2 py-0.5 rounded font-mono">Mint / T-Mobile / Verizon / AT&amp;T</span>
-        </div>
-        <p class="text-slate-300">
-          Dial the code below once on your phone. When a recruiter calls your personal number, tap <strong>Decline (Red button)</strong>. The call instantly routes to this screen with live AI answers!
-        </p>
-      </div>
-
-      <div class="flex items-center gap-2 shrink-0">
-        <div class="bg-slate-950 border border-indigo-800 rounded-xl px-3 py-1.5 flex items-center gap-2 font-mono text-amber-300 font-bold text-sm">
-          <span id="carrierCodeDisplay">*67*12543904880#</span>
-          <button id="copyCarrierCodeBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold px-2 py-0.5 rounded transition">
-            Copy
-          </button>
-        </div>
-        <button onclick="document.getElementById('carrierPairingBanner').classList.add('hidden')" class="text-slate-400 hover:text-white p-1 rounded-lg">
-          <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- MAIN WORKSPACE -->
   <main class="flex-1 min-h-0 w-full overflow-hidden flex flex-col lg:flex-row p-3 sm:p-5 gap-3 sm:gap-4 bg-slate-950">
 
@@ -215,27 +187,63 @@
     <!-- RIGHT PANE: OUTBOUND DIALER & CALL HISTORY (30% WIDTH ON DESKTOP) -->
     <aside class="w-full lg:w-96 flex flex-col gap-3 sm:gap-4 shrink-0 overflow-hidden">
 
-      <!-- OUTBOUND RECRUITER DIALER CARD -->
-      <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-4 sm:p-5 backdrop-blur-md shadow-lg shadow-black/20 shrink-0 space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
-            <i data-lucide="phone-outgoing" class="w-4 h-4 text-emerald-400"></i>
-            <span>Outbound Recruiter Dialer</span>
-          </h3>
-          <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">Caller ID: Your Phone</span>
+      <!-- CARRIER FORWARDING & OUTBOUND DIALER CARD -->
+      <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-3.5 sm:p-4 backdrop-blur-md shadow-lg shadow-black/20 shrink-0 space-y-3">
+        <!-- Segmented Tab Controls -->
+        <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button id="tabDeclineForwardBtn" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow-sm">
+            <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+            <span>Decline Forward (*67*)</span>
+          </button>
+          <button id="tabCallRecruiterBtn" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white">
+            <i data-lucide="phone-outgoing" class="w-3.5 h-3.5"></i>
+            <span>Call Recruiter</span>
+          </button>
         </div>
 
-        <p class="text-xs text-slate-400 leading-relaxed">
-          Recruiter asked you to call them? Type their number below to call directly from your browser.
-        </p>
+        <!-- TAB 1: DECLINE FORWARD (*67*) -->
+        <div id="tabDeclineForwardPane" class="space-y-2.5">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400 font-medium">Decline-to-Route Setup</span>
+            <span class="bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 px-2 py-0.5 rounded text-[10px] font-mono">Mint / T-Mobile / Verizon / AT&T</span>
+          </div>
 
-        <!-- Phone Input & Call Button -->
-        <div class="space-y-2">
-          <input type="tel" id="outboundNumberInput" placeholder="+1 (415) 555-0199" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
-          <button id="startOutboundCallBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold py-2.5 rounded-xl shadow-md shadow-emerald-600/25 transition text-xs flex items-center justify-center gap-2">
-            <i data-lucide="phone-call" class="w-4 h-4"></i>
-            <span>Call Recruiter Now</span>
-          </button>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Dial once on your phone. When a recruiter calls your personal number, tap <strong class="text-rose-400">Decline (Red button)</strong>. The call instantly routes here with live AI answers!
+          </p>
+
+          <div class="bg-slate-950 border border-indigo-800/80 rounded-xl px-3 py-2 flex items-center justify-between font-mono text-amber-300 font-bold text-sm">
+            <span id="carrierCodeDisplay">*67*12543904880#</span>
+            <button id="copyCarrierCodeBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1 rounded-lg transition active:scale-95 flex items-center gap-1">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span id="copyBtnText">Copy</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-1.5 text-[11px] text-emerald-400 bg-emerald-950/30 border border-emerald-800/40 rounded-lg px-2.5 py-1.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Silent Inbound: Only recruiter audio is captured.</span>
+          </div>
+        </div>
+
+        <!-- TAB 2: CALL RECRUITER (OUTBOUND DIALER) -->
+        <div id="tabCallRecruiterPane" class="space-y-2.5 hidden">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-400 font-medium">Browser WebRTC Dialer</span>
+            <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">Caller ID: Your Phone</span>
+          </div>
+
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Recruiter asked you to call them? Type their number below to call directly from your browser.
+          </p>
+
+          <div class="space-y-2">
+            <input type="tel" id="outboundNumberInput" placeholder="+1 (415) 555-0199" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            <button id="startOutboundCallBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold py-2 rounded-xl shadow-md shadow-emerald-600/25 transition text-xs flex items-center justify-center gap-2">
+              <i data-lucide="phone-call" class="w-4 h-4"></i>
+              <span>Call Recruiter Now</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -349,7 +357,6 @@
     const carrierCodeDisplay = document.getElementById('carrierCodeDisplay');
     const copyCarrierCodeBtn = document.getElementById('copyCarrierCodeBtn');
     const toggleSetupGuideBtn = document.getElementById('toggleSetupGuideBtn');
-    const carrierPairingBanner = document.getElementById('carrierPairingBanner');
 
     // Modals
     const resumeModal = document.getElementById('resumeModal');
@@ -370,19 +377,37 @@
     const outboundNumberInput = document.getElementById('outboundNumberInput');
     const startOutboundCallBtn = document.getElementById('startOutboundCallBtn');
 
-    // Toggle Carrier Setup Banner
-    if (toggleSetupGuideBtn) {
-      toggleSetupGuideBtn.onclick = () => {
-        carrierPairingBanner.classList.toggle('hidden');
-      };
+    // Tabs for Carrier Forwarding & Call Recruiter
+    const tabDeclineForwardBtn = document.getElementById('tabDeclineForwardBtn');
+    const tabCallRecruiterBtn = document.getElementById('tabCallRecruiterBtn');
+    const tabDeclineForwardPane = document.getElementById('tabDeclineForwardPane');
+    const tabCallRecruiterPane = document.getElementById('tabCallRecruiterPane');
+    const copyBtnText = document.getElementById('copyBtnText');
+
+    function switchRightTab(tab) {
+      if (tab === 'forward') {
+        tabDeclineForwardBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-indigo-600 text-white shadow-sm';
+        tabCallRecruiterBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white';
+        tabDeclineForwardPane.classList.remove('hidden');
+        tabCallRecruiterPane.classList.add('hidden');
+      } else {
+        tabCallRecruiterBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow-sm';
+        tabDeclineForwardBtn.className = 'flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white';
+        tabCallRecruiterPane.classList.remove('hidden');
+        tabDeclineForwardPane.classList.add('hidden');
+      }
     }
+
+    if (tabDeclineForwardBtn) tabDeclineForwardBtn.onclick = () => switchRightTab('forward');
+    if (tabCallRecruiterBtn) tabCallRecruiterBtn.onclick = () => switchRightTab('call');
+    if (toggleSetupGuideBtn) toggleSetupGuideBtn.onclick = () => switchRightTab('forward');
 
     // Copy Carrier Code
     if (copyCarrierCodeBtn && carrierCodeDisplay) {
       copyCarrierCodeBtn.onclick = () => {
         navigator.clipboard.writeText(carrierCodeDisplay.textContent.trim()).then(() => {
-          copyCarrierCodeBtn.textContent = 'Copied!';
-          setTimeout(() => { copyCarrierCodeBtn.textContent = 'Copy'; }, 2000);
+          if (copyBtnText) copyBtnText.textContent = 'Copied!';
+          setTimeout(() => { if (copyBtnText) copyBtnText.textContent = 'Copy'; }, 2000);
         });
       };
     }
