@@ -1102,9 +1102,27 @@
           // Google Meet / System Tab Loopback Mode with Auto-Fallback to Microphone
           try {
             liveAudioStream = await navigator.mediaDevices.getDisplayMedia({
-              video: true,
+              video: {
+                width: { ideal: 640 },
+                height: { ideal: 360 },
+                frameRate: { ideal: 10, min: 5 }
+              },
               audio: true
             });
+
+            // Keep video active in a hidden background video element so Chromium compositor pumps audio frames continuously
+            let syncVideo = document.getElementById('loopbackSyncVideo');
+            if (!syncVideo) {
+              syncVideo = document.createElement('video');
+              syncVideo.id = 'loopbackSyncVideo';
+              syncVideo.autoplay = true;
+              syncVideo.muted = true;
+              syncVideo.playsInline = true;
+              syncVideo.style.display = 'none';
+              document.body.appendChild(syncVideo);
+            }
+            syncVideo.srcObject = liveAudioStream;
+            syncVideo.play().catch(() => {});
 
             const audioTracks = liveAudioStream.getAudioTracks();
             if (audioTracks.length === 0) {

@@ -6,6 +6,10 @@ const { app, BrowserWindow, screen, globalShortcut, session, desktopCapturer } =
 const path = require('path');
 const http = require('http');
 
+// Prevent Chromium from throttling audio and background timers in the overlay
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+
 let mainWindow = null;
 
 function createStealthWindow() {
@@ -85,11 +89,14 @@ function createStealthWindow() {
     });
   }
 
-  // Enable F5 and Ctrl+R to quickly reload the prompter inside Electron
+  // Enable F5, Ctrl+R to quickly reload, and F12 / Ctrl+Shift+I to open DevTools
   mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.key === 'F5' || (input.control && input.key.toLowerCase() === 'r') || (input.meta && input.key.toLowerCase() === 'r')) {
       console.log('[Stealth] Reloading page...');
       mainWindow.reload();
+    }
+    if (input.key === 'F12' || (input.control && input.shift && input.key.toLowerCase() === 'i')) {
+      mainWindow.webContents.toggleDevTools();
     }
   });
 
