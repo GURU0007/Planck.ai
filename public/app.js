@@ -898,6 +898,9 @@ function setupAudioProcessing() {
 
   let chunkCount = 0;
 
+  let silentFramesCount = 0;
+  const SILENCE_THRESHOLD_RMS = 0.0025;
+
   scriptProcessor.onaudioprocess = (e) => {
     if (!isRecording || !ws || ws.readyState !== WebSocket.OPEN) return;
 
@@ -911,6 +914,14 @@ function setupAudioProcessing() {
     const rms = Math.sqrt(sum / inputData.length);
     const db = Math.round(20 * Math.log10(rms || 0.0001));
     audioMeterText.textContent = `${Math.max(-60, db)} dB`;
+
+    // VAD: If silence, allow 3 trailing frames then cut to prevent STT silence hallucinations
+    if (rms < SILENCE_THRESHOLD_RMS) {
+      silentFramesCount++;
+      if (silentFramesCount > 3) return;
+    } else {
+      silentFramesCount = 0;
+    }
 
     // Convert Float32 [-1, 1] to Int16 PCM
     const pcm16 = new Int16Array(inputData.length);

@@ -98,6 +98,7 @@ const SOFTWARE_KEYWORDS = [
 
 // High-Accuracy Phonetic & Software Terminology Corrector
 function autocorrectTechTerms(text) {
+  if (!text) return '';
   let corrected = text;
   const replacements = [
     { pattern: /\b(screen\s*book|spring\s*book|string\s*boot|spring\s*board|spring\s*boat)\b/gi, replacement: 'Spring Boot' },
@@ -113,12 +114,44 @@ function autocorrectTechTerms(text) {
     { pattern: /\b(j\s*w\s*t|jay\s*dub|jot)\b/gi, replacement: 'JWT' },
     { pattern: /\b(elastic\s*search)\b/gi, replacement: 'Elasticsearch' },
     { pattern: /\b(web\s*socket|web\s*sockets)\b/gi, replacement: 'WebSockets' },
+    { pattern: /\b(component\s+and\s+beam|difference\s+between\s+component\s+and\s+beam)\b/gi, replacement: 'difference between component and bean' },
+    { pattern: /\b(spring\s+beam)\b/gi, replacement: 'Spring Bean' },
+    { pattern: /\b(spring\s+beans)\b/gi, replacement: 'Spring Beans' },
   ];
 
   for (const { pattern, replacement } of replacements) {
     corrected = corrected.replace(pattern, replacement);
   }
+
+  // If question mentions component or spring or backend and has the word 'beam', it's 100% 'bean'
+  if (/\b(component|spring|java|ioc|backend)\b/i.test(corrected)) {
+    corrected = corrected.replace(/\bbeams\b/gi, 'beans').replace(/\bbeam\b/gi, 'bean');
+  }
+
   return corrected;
+}
+
+// Clean and normalize question text for LLM generation (strip STT counting numbers, filler tokens, repetitions)
+function cleanQuestionForLLM(rawText) {
+  if (!rawText) return '';
+  let cleaned = autocorrectTechTerms(rawText);
+
+  // Strip leading numbering or counting artifacts like "Three what is...", "One explain...", "2 what is..."
+  cleaned = cleaned.replace(/^(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)[\s,.:;—-]+(?=what|how|why|can|could|explain|describe|tell|difference|is|are|which)/i, '');
+  
+  // Strip leading conversational filler
+  cleaned = cleaned.replace(/^(?:um|uh|so|like|yeah|okay|hey|alright)[\s,.:;—-]+/i, '');
+
+  // Strip duplicate consecutive words: "the the" -> "the", "what what" -> "what"
+  cleaned = cleaned.replace(/\b(\w+)\s+\1\b/gi, '$1');
+
+  // If clean left a hanging capital or punctuation, tidy it
+  cleaned = cleaned.trim();
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
+  return cleaned;
 }
 
 // Check if a sentence is an incomplete thought (dangling connector / conjunction)
@@ -330,7 +363,9 @@ wss.on('connection', (ws, req) => {
         smart_format: true,
         punctuate: true,
         interim_results: true,
-        endpointing: 200, // 200ms ultra-low pause detection for instant turn finalization
+        endpointing: 350, // 350ms natural speech pause (prevents cutting off mid-sentence)
+        utterance_end_ms: 1000, // 1000ms confirms true end of utterance
+        vad_events: true, // Native Deepgram Voice Activity Detection
         encoding: 'linear16',
         sample_rate: clientSampleRate,
         channels: 1,
@@ -516,15 +551,25 @@ function getOptimizedCandidateContext(rawContext) {
 }
 
 // Ultra-fast streaming answer generator with automatic model fallback and live spectator mirroring
-async function generateInstantAnswer(question, ws, groq, roomId) {
+async function generateInstantAnswer(rawQuestion, ws, groq, roomId) {
   const room = roomId ? liveRooms.get(roomId) : null;
+  const question = cleanQuestionForLLM(rawQuestion);
+  const answerId = 'ans_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
 
   function broadcast(obj) {
+    obj.answerId = answerId;
     const s = JSON.stringify(obj);
-    if (ws && ws.readyState === WebSocket.OPEN) ws.send(s);
+    const sentSockets = new Set();
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(s);
+      sentSockets.add(ws);
+    }
     if (room) {
       room.spectators.forEach(spec => {
-        if (spec.readyState === WebSocket.OPEN) spec.send(s);
+        if (!sentSockets.has(spec) && spec.readyState === WebSocket.OPEN) {
+          spec.send(s);
+          sentSockets.add(spec);
+        }
       });
     }
   }
@@ -552,17 +597,26 @@ async function generateInstantAnswer(question, ws, groq, roomId) {
   const messages = [
     {
       role: 'system',
-      content: `You are an elite Staff Software Engineer speaking out loud on a live technical interview call.
+      content: `You are an elite Staff Software Engineer providing instant, glanceable interview talking points for a live technical interview. The candidate will speak these points aloud.
 
-CRITICAL INSTRUCTIONS FOR HUMAN, HIGH-CALIBER TECHNICAL ANSWERS:
-1. DEEP TECHNICAL JUSTIFICATION: Answer the specific question directly with concrete engineering mechanics, root causes, trade-offs, or protocols (e.g. connection pool saturation, cache-aside invalidation, partition tolerance, N+1 query overhead, Kafka consumer lag, event-driven idempotency keys, thread contention, write-ahead logs).
-2. NO GENERIC JUNIOR CHECKLISTS: STRICTLY FORBIDDEN to give generic procedural fluff like "1. I start by checking Datadog... 2. Then I reproduce... 3. Finally I deploy a fix...". Give the real engineering "why" and "how" with architectural depth.
-3. NATURAL SPOKEN ELOQUENCE: Sound like a sharp, articulate engineer speaking naturally in conversation. Use natural phrasing that can be spoken out loud with complete confidence.
-4. FORMAT: Provide 2 to 3 dense, impactful points with clear technical justification.
-5. STRICTLY NO markdown asterisks or stars (NO ** or *).
-6. LENGTH: Around 85 to 110 words of rich, substantive technical value.
+CRITICAL FORMAT REQUIREMENTS (MUST BE INSTANTLY SCANABLE IN <2 SECONDS):
+• DIRECT ANSWER: 1 crisp sentence answering the core technical distinction directly.
+• 2 TO 3 CONCISE BULLET POINTS:
+  - Format each bullet as: • **Concept Name**: Direct technical mechanics, lifecycle, and runtime role.
+  - Keep each bullet to 1-2 lines. Focus on architecture, memory, concurrency, or dependency injection.
+• PRO-TIP / GOTCHA: 1 sharp senior engineer insight (e.g. scope trap, production memory leak, or thread safety).
 
-Candidate Profile Context:
+STT PHONETIC ERROR CORRECTION (MANDATORY):
+1. The question comes from live speech-to-text and often contains phonetic mishearings or filler words:
+   - "beam" -> "Bean" (Spring Bean vs React Component).
+   - "screen book" -> "Spring Boot".
+   - "cubernetes" / "cooper net" -> "Kubernetes".
+   - "docker compose" / "docker composed".
+2. Silently deduce the TRUE technical concept the interviewer intended and answer it directly.
+3. NEVER lecture the interviewer on their mishearing or grammar. Answer the real technical concept with complete confidence.
+4. Keep total response around 65 to 90 words. Avoid giant essay walls of text.
+
+Candidate Profile:
 ${optimizedContext}`
     },
     {

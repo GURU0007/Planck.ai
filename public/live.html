@@ -491,7 +491,12 @@
     const prompterStreamer = new KineticStreamer(centerPromptText);
     const qaStreamer = new KineticStreamer(qaLiveSpeechText);
 
+    let isHostCapturing = false;
+    let activeAnswerId = null;
+
     function connectSpectator() {
+      if (isHostCapturing) return; // Do not connect spectator if this client is actively capturing audio as host
+
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws?spectator=true&roomId=${encodeURIComponent(roomId)}&pin=${encodeURIComponent(roomPin)}`;
 
@@ -522,10 +527,13 @@
 
       specWs.onclose = () => {
         if (specHeartbeat) clearInterval(specHeartbeat);
+        if (isHostCapturing) return; // Suppress auto-reconnect if host capture took over!
         hostStatusBadge.className = 'flex items-center gap-1.5 bg-slate-900 border border-slate-800 text-slate-400 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
         hostStatusDot.className = 'w-2 h-2 rounded-full bg-slate-500 shrink-0';
         hostStatusText.textContent = 'Disconnected';
-        setTimeout(connectSpectator, 3000);
+        setTimeout(() => {
+          if (!isHostCapturing) connectSpectator();
+        }, 3000);
       };
     }
 
@@ -558,28 +566,36 @@
 
       // INSTANT AI ANSWER STREAMING
       if (data.type === 'answer_start') {
+        activeAnswerId = data.answerId || ('ans_' + Date.now());
         currentAiAnswer = '';
         currentQuestion = data.question;
+
+        // Clean and reset previous response buffer completely
+        qaAnswerContent.innerHTML = '';
+        qaStreamer.clear();
 
         // Update Question Card
         questionCardLabel.textContent = 'Detected Interviewer Question';
         questionTimestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        qaStreamer.clear();
         qaLiveSpeechText.innerHTML = `"${escapeHtml(data.question)}"`;
 
         // Update Answer Card
         qaAnswerStatusBadge.className = 'text-[10px] sm:text-xs bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 font-bold px-2.5 py-0.5 rounded-full animate-pulse';
         qaAnswerStatusBadge.textContent = '⚡ Streaming Answer (~120ms)...';
-        qaAnswerContent.innerHTML = '';
       }
 
       if (data.type === 'answer_token') {
+        // Drop any stale tokens from old generations to prevent interleaving
+        if (data.answerId && activeAnswerId && data.answerId !== activeAnswerId) return;
+
         currentAiAnswer += data.token;
         renderFormattedQaAnswer(currentAiAnswer);
         qaAnswerContent.scrollTop = qaAnswerContent.scrollHeight;
       }
 
       if (data.type === 'answer_done') {
+        if (data.answerId && activeAnswerId && data.answerId !== activeAnswerId) return;
+
         qaAnswerStatusBadge.className = 'text-[10px] sm:text-xs bg-emerald-950/80 border border-emerald-800/60 text-emerald-300 font-bold px-2.5 py-0.5 rounded-full';
         qaAnswerStatusBadge.textContent = '✓ Ready to Speak';
 
@@ -872,8 +888,12 @@
         await liveAudioCtx.resume();
         const sampleRate = liveAudioCtx.sampleRate;
 
-        // Disconnect spectator WS so we don't get double messages
+        // Disconnect spectator WS cleanly without allowing reconnect
+        isHostCapturing = true;
         if (specWs) {
+          specWs.onclose = null;
+          specWs.onmessage = null;
+          specWs.onerror = null;
           try { specWs.close(); } catch (e) {}
           specWs = null;
         }
@@ -943,9 +963,29 @@
       liveProcessor.connect(muteGain);
       muteGain.connect(liveAudioCtx.destination);
 
+      let silentFramesCount = 0;
+      const SILENCE_THRESHOLD_RMS = 0.0025; // Noise floor for ambient silence
+
       liveProcessor.onaudioprocess = (e) => {
         if (!isCapturingAudio || !liveHostWs || liveHostWs.readyState !== WebSocket.OPEN) return;
         const inputData = e.inputBuffer.getChannelData(0);
+
+        // VAD: Calculate RMS energy to detect silence vs speech
+        let sumSquares = 0;
+        for (let i = 0; i < inputData.length; i++) {
+          sumSquares += inputData[i] * inputData[i];
+        }
+        const rms = Math.sqrt(sumSquares / inputData.length);
+
+        if (rms < SILENCE_THRESHOLD_RMS) {
+          silentFramesCount++;
+          // Allow 3 silent frames (~250ms) to trail speech naturally for consonant cut-offs, then cut transmission
+          if (silentFramesCount > 3) {
+            return; // Cleanly cut trailing ambient noise so STT doesn't hallucinate!
+          }
+        } else {
+          silentFramesCount = 0;
+        }
 
         // Convert Float32 to Int16 PCM
         const pcm16 = new Int16Array(inputData.length);
@@ -960,6 +1000,7 @@
 
     function stopLiveCapture() {
       isCapturingAudio = false;
+      isHostCapturing = false;
 
       if (liveProcessor) {
         try { liveProcessor.disconnect(); } catch (e) {}
@@ -974,6 +1015,9 @@
         liveAudioStream = null;
       }
       if (liveHostWs) {
+        liveHostWs.onclose = null;
+        liveHostWs.onmessage = null;
+        liveHostWs.onerror = null;
         try { liveHostWs.close(); } catch (e) {}
         liveHostWs = null;
       }
@@ -995,8 +1039,8 @@
         `;
       }
 
-      // Reconnect spectator WS to listen for any external audio stream
-      connectSpectator();
+      // Reconnect spectator WS cleanly after host capture stops
+      setTimeout(connectSpectator, 150);
       if (window.lucide) lucide.createIcons();
     }
 
