@@ -236,9 +236,23 @@ function autocorrectTechTerms(text) {
 }
 
 // Clean and normalize question text for LLM generation (strip STT counting numbers, filler tokens, repetitions)
+function deduplicatePhrases(text) {
+  if (!text) return '';
+  let s = text;
+  // 1. Strip duplicate consecutive words: "the the" -> "the", "Hello? Hello?" -> "Hello?"
+  s = s.replace(/(\b\w+\b[?!,.]*)(?:\s+\1)+/gi, '$1');
+  // 2. Strip multi-word repeated loops (e.g. "explain the difference between... explain the difference between...")
+  for (let n = 8; n >= 2; n--) {
+    const regex = new RegExp('(\\b(?:\\w+[?!,.]*\\s*){' + n + '})(?:\\s*\\1)+', 'gi');
+    s = s.replace(regex, '$1');
+  }
+  return s.trim();
+}
+
 function cleanQuestionForLLM(rawText) {
   if (!rawText) return '';
   let cleaned = autocorrectTechTerms(rawText);
+  cleaned = deduplicatePhrases(cleaned);
 
   // Strip leading numbering or counting artifacts like "Three what is...", "One explain...", "2 what is..."
   cleaned = cleaned.replace(/^(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)[\s,.:;—-]+(?=what|how|why|can|could|explain|describe|tell|difference|is|are|which)/i, '');
@@ -350,23 +364,40 @@ app.post('/api/telecom/generate', async (req, res) => {
 
   // Also generate and return complete answer directly in response for 100% guarantee!
   try {
-    const completion = await masterGroq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an elite Staff Software Engineer providing instant, glanceable interview talking points for a live recruiter phone interview. The candidate will speak these points aloud over the phone.
+    let completion;
+    try {
+      completion = await masterGroq.chat.completions.create({
+        model: 'qwen/qwen3.8-27b',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an elite Staff Software Engineer providing instant, glanceable interview talking points for a live recruiter phone interview. The candidate will speak these points aloud over the phone.
 
 CRITICAL FORMAT REQUIREMENTS (FLUID SPOKEN PARAGRAPHS - STRICTLY ZERO BULLETS):
 1. IGNORE RECRUITER SMALL TALK & INTRODUCTIONS: Completely ignore filler greetings ("Hello", "How are you", "My name is..."). Focus 100% on answering the core technical question.
 2. ZERO BULLET POINTS, ZERO ASTERISKS, ZERO SECTION HEADERS: Absolutely NO bullets (•, -, *), NO asterisks (**), NO labels ("Situation:", "Action:"). Output ONLY 2 to 3 natural, fluid paragraphs separated by clean double line breaks.
 3. SPOKEN CONVERSATIONAL TONE: First-person ("In my experience", "I designed", "we implemented"). Length: 110 to 140 words total so the candidate can read aloud smoothly.`
-        },
-        { role: 'user', content: text }
-      ],
-      max_tokens: 320,
-      temperature: 0.25,
-    });
+          },
+          { role: 'user', content: text }
+        ],
+        max_tokens: 280,
+        temperature: 0.25,
+      });
+    } catch (primaryErr) {
+      console.warn('[REST Primary Model Fallback to gpt-oss-20b]:', primaryErr.message);
+      completion = await masterGroq.chat.completions.create({
+        model: 'openai/gpt-oss-20b',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an elite Staff Software Engineer providing instant, glanceable interview talking points for a live recruiter phone interview. Zero bullets. Output 2-3 natural spoken paragraphs.`
+          },
+          { role: 'user', content: text }
+        ],
+        max_tokens: 280,
+        temperature: 0.25,
+      });
+    }
     const answer = completion.choices[0]?.message?.content || '';
     return res.json({ ok: true, answer });
   } catch (err) {
@@ -828,8 +859,12 @@ telecomWss.on('connection', (ws, req) => {
     const isFinal = data.is_final;
 
     if (isFinal) {
-      recruiterTurnUtterances.push(corrected);
-      const accumulatedSpeech = recruiterTurnUtterances.join(' ').trim();
+      const lastPhrase = recruiterTurnUtterances[recruiterTurnUtterances.length - 1];
+      if (!lastPhrase || lastPhrase.trim().toLowerCase() !== corrected.trim().toLowerCase()) {
+        recruiterTurnUtterances.push(corrected);
+      }
+      const rawAccumulated = recruiterTurnUtterances.join(' ').trim();
+      const accumulatedSpeech = deduplicatePhrases(rawAccumulated);
       console.log(`[Phone Recruiter STT] "${corrected}" (Full turn so far: ${accumulatedSpeech.length} chars)`);
 
       // Broadcast full cumulative speech to recruiter dashboard in real-time!
@@ -1391,7 +1426,7 @@ async function generateInstantAnswer(rawQuestion, ws, groq, roomId) {
   let maxTokensToGenerate = 160;
 
   if (currentStyle === 'deep') {
-    maxTokensToGenerate = 320;
+    maxTokensToGenerate = 280;
     styleInstructions = `
 CRITICAL FORMAT REQUIREMENTS (FLUID SPOKEN PARAGRAPHS - STRICTLY ZERO BULLETS):
 The candidate is speaking live on a phone screen with a recruiter and will read this answer smoothly aloud.
@@ -1462,7 +1497,7 @@ ${optimizedContext}`
   ];
 
   // Primary model and fallback model with separate rate limit pools
-  const modelsToTry = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'qwen/qwen3.8-27b'];
+  const modelsToTry = ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
   let streamSuccess = false;
   let lastError = null;
 
@@ -1499,12 +1534,8 @@ ${optimizedContext}`
     } catch (err) {
       console.warn(`[Groq] Model ${model} failed:`, err.message);
       lastError = err;
-      if (err.status === 429 || err.message?.includes('429') || err.message?.includes('Rate limit')) {
-        console.log(`[Groq] Rate limit hit on ${model}, attempting fallback...`);
-        continue;
-      } else {
-        break;
-      }
+      console.log(`[Groq] Attempting fallback model...`);
+      continue;
     }
   }
 
