@@ -53,6 +53,15 @@ app.get('/live', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'live.html'));
 });
 
+// Download Standalone Native Stealth ZIP for Windows (Portable, extract & double-click Planck-Stealth.exe)
+app.get(['/download/stealth-zip', '/download/stealth-exe'], (req, res) => {
+  const zipPath = path.join(__dirname, 'dist', 'Planck-Stealth-Windows.zip');
+  if (fs.existsSync(zipPath)) {
+    return res.download(zipPath, 'Planck-Stealth-Windows.zip');
+  }
+  res.redirect('https://github.com/GURU0007/Planck.ai/releases/latest/download/Planck-Stealth-Windows.zip');
+});
+
 // Download Standalone Windows Stealth Launcher (.bat) configured for user's room
 app.get('/download/stealth', (req, res) => {
   let baseUrl = 'https://planck-ai.onrender.com';

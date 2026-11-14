@@ -3,6 +3,8 @@
 // The window is 100% visible on your physical screen, but completely INVISIBLE to Zoom, Meet, Teams screen shares!
 
 const { app, BrowserWindow, screen, globalShortcut, session, desktopCapturer } = require('electron');
+const path = require('path');
+const http = require('http');
 
 let mainWindow = null;
 
@@ -22,7 +24,10 @@ function createStealthWindow() {
     transparent: false,
     frame: true,
     title: 'Planck.ai Stealth Copilot',
+    // Win32 WS_EX_TOOLWINDOW: OS-level exclusion from Windows Taskbar & Alt+Tab
+    type: process.platform === 'win32' ? 'toolbar' : 'normal',
     skipTaskbar: true, // Invisible on taskbar
+    icon: path.join(__dirname, 'icon.ico'),
     hasShadow: true,
     resizable: true,
     minimizable: true,
@@ -33,6 +38,12 @@ function createStealthWindow() {
     }
   });
 
+  // Explicitly enforce taskbar invisibility on Windows
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.setSkipTaskbar(true);
+    mainWindow.show();
+  });
+
   // =========================================================================
   // THE SECRET VAULT / GHOST OVERLAY SHIELD:
   // Windows: calls SetWindowDisplayAffinity(hWnd, WDA_EXCLUDEFROMCAPTURE)
@@ -41,12 +52,16 @@ function createStealthWindow() {
   // =========================================================================
   mainWindow.setContentProtection(true);
 
-  // Auto-detect: Use localhost:3000 if running, otherwise use Render cloud
-  const http = require('http');
+  // Auto-detect: Accept CLI arg URL, or check localhost:3000, otherwise use Render cloud
   const localUrl = 'http://localhost:3000/live?room=main_room';
   const renderUrl = 'https://planck-ai.onrender.com/live?room=main_room';
 
-  if (process.env.PLANCK_URL) {
+  const cliUrl = process.argv.slice(1).find(arg => arg && (arg.startsWith('http://') || arg.startsWith('https://')));
+
+  if (cliUrl) {
+    console.log('[Stealth Overlay] Using CLI URL:', cliUrl);
+    mainWindow.loadURL(cliUrl);
+  } else if (process.env.PLANCK_URL) {
     console.log('[Stealth Overlay] Using custom PLANCK_URL:', process.env.PLANCK_URL);
     mainWindow.loadURL(process.env.PLANCK_URL);
   } else {
@@ -85,6 +100,7 @@ function createStealthWindow() {
       console.log('[Stealth] Overlay hidden');
     } else {
       mainWindow.show();
+      mainWindow.setSkipTaskbar(true);
       console.log('[Stealth] Overlay restored');
     }
   });
@@ -101,30 +117,33 @@ function createStealthWindow() {
 }
 
 app.whenReady().then(() => {
-  // Automatically permit display and audio loopback capture
+  // Grant all media, microphone, and screen-capture permissions automatically
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     callback(true);
   });
+  session.defaultSession.setPermissionCheckHandler(() => true);
+  session.defaultSession.setDevicePermissionHandler(() => true);
 
   // Enable 1-click audio capture inside Electron (captures loopback audio from speakers/headphones)
   session.defaultSession.setDisplayMediaRequestHandler(async (request, callback) => {
     try {
-      const sources = await desktopCapturer.getSources({ types: ['screen'] });
+      const sources = await desktopCapturer.getSources({ types: ['screen', 'window'] });
       if (sources && sources.length > 0) {
         callback({ video: sources[0], audio: 'loopback' });
       } else {
         callback(null);
       }
     } catch (err) {
-      console.error('[Stealth Overlay] Display media error:', err);
+      console.error('[Stealth Overlay] Display media handler error:', err);
       callback(null);
     }
-  });
+  }, { useSystemPicker: false });
 
   createStealthWindow();
   console.log('====================================================');
   console.log('🛡️ PLANCK.AI STEALTH OVERLAY RUNNING');
   console.log('   - Windows Screen Capture Exclusion: ACTIVE');
+  console.log('   - Taskbar Invisibility (WS_EX_TOOLWINDOW): ACTIVE');
   console.log('   - Loopback Audio Capture: ENABLED');
   console.log('   - Zoom, Google Meet & Teams see through this window');
   console.log('   - Toggle visibility anytime with: Ctrl+Shift+H');
