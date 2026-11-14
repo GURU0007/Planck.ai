@@ -389,24 +389,24 @@ app.post('/api/telecom/webhook', async (req, res) => {
         from: callData.from
       });
 
-      // Start silent media fork on inbound_track (Recruiter voice only!)
+      // Start silent media stream on inbound_track (Recruiter voice only!)
       const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream?callControlId=${encodeURIComponent(callControlId)}&roomId=${encodeURIComponent(callData.roomId)}`;
       try {
-        await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/fork_media_start`, {
+        const streamRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/streaming_start`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${TELNYX_MASTER_KEY}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            media_url: streamUrl,
-            stream_type: 'websocket',
-            tracks: 'inbound_track' // ONLY capture recruiter voice!
+            stream_url: streamUrl,
+            stream_track: 'inbound_track' // ONLY capture recruiter voice!
           })
         });
-        console.log(`[Telecom Fork] Started inbound media fork to ${streamUrl}`);
-      } catch (forkErr) {
-        console.warn('[Telecom Fork] Failed to start media fork:', forkErr.message);
+        const streamData = await streamRes.json();
+        console.log(`[Telecom Stream] Started inbound streaming to ${streamUrl}`, streamData);
+      } catch (streamErr) {
+        console.warn('[Telecom Stream] Failed to start media streaming:', streamErr.message);
       }
     }
   } else if (eventType === 'call.hangup') {
@@ -440,20 +440,21 @@ app.post('/api/telecom/answer', async (req, res) => {
     const answerData = await answerRes.json();
     console.log(`[Telecom Answer] Call answered: ${callControlId}`, answerData);
 
-    // Also immediately trigger media fork
+    // Also immediately trigger media streaming on inbound_track
     const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream?callControlId=${encodeURIComponent(callControlId)}&roomId=main_room`;
-    await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/fork_media_start`, {
+    const streamRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/streaming_start`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${TELNYX_MASTER_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        media_url: streamUrl,
-        stream_type: 'websocket',
-        tracks: 'inbound_track'
+        stream_url: streamUrl,
+        stream_track: 'inbound_track'
       })
     });
+    const streamData = await streamRes.json();
+    console.log(`[Telecom Answer Stream] Streaming initiated:`, streamData);
 
     return res.json({ ok: true, message: 'Call answered via Telnyx' });
   } catch (err) {
@@ -503,7 +504,7 @@ app.post('/api/telecom/outbound', async (req, res) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        connection_id: process.env.TELNYX_CONNECTION_ID,
+        connection_id: process.env.TELNYX_CONNECTION_ID || '3093169110406662089',
         to: to,
         from: TELNYX_MASTER_DID,
         stream_track: 'inbound_track',
@@ -654,6 +655,11 @@ telecomWss.on('connection', (ws, req) => {
         if (dgConnection && dgConnection.getReadyState() === 1) {
           dgConnection.send(audioBuffer);
         }
+        // Forward audio chunk to candidate's browser to play caller voice through laptop speakers!
+        broadcastToRoom(roomId, {
+          type: 'audio_stream_chunk',
+          payload: data.media.payload
+        });
       }
     } catch (e) {
       // If raw binary buffer
