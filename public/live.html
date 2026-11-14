@@ -117,22 +117,16 @@
 
     <!-- Spectator Status & Utility Controls -->
     <div class="flex items-center gap-1.5 shrink-0">
-      <!-- Audio Source Toggle: Meet/Speakers vs Microphone -->
-      <div class="inline-flex rounded-lg bg-slate-900 border border-slate-800 p-0.5 text-[11px] font-semibold shrink-0">
-        <button id="srcModeMeetBtn" class="px-2 py-1 rounded-md bg-emerald-600 text-white transition flex items-center gap-1" title="Interviewer Only: Captures audio from Meet tab / system speakers">
-          <i data-lucide="headphones" class="w-3 h-3"></i>
-          <span class="hidden md:inline">Meet Audio</span>
-        </button>
-        <button id="srcModeMicBtn" class="px-2 py-1 rounded-md text-slate-400 hover:text-white transition flex items-center gap-1" title="Microphone: Captures your voice or room speakers via mic">
-          <i data-lucide="mic" class="w-3 h-3"></i>
-          <span class="hidden md:inline">Mic</span>
-        </button>
-      </div>
-
       <!-- 1-Click Capture Google Meet Audio Button -->
-      <button id="liveCaptureMeetBtn" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 transition shrink-0" title="Start listening to interview voice">
-        <i id="liveCaptureIcon" data-lucide="headphones" class="w-3.5 h-3.5 text-white"></i>
-        <span id="liveCaptureBtnText">Start Listening</span>
+      <button id="liveCaptureMeetBtn" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 transition shrink-0" title="Capture interviewer voice from Google Meet tab (zero candidate mic)">
+        <i data-lucide="headphones" class="w-3.5 h-3.5 text-white"></i>
+        <span id="liveCaptureBtnText">Capture Google Meet Audio</span>
+      </button>
+
+      <!-- Microphone Mode Alternative Button -->
+      <button id="liveCaptureMicBtn" class="bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition shrink-0" title="Listen to your voice / room microphone">
+        <i data-lucide="mic" class="w-3 h-3 text-emerald-400"></i>
+        <span class="hidden sm:inline">Use Mic</span>
       </button>
 
       <!-- Resume / Candidate Profile Modal Trigger -->
@@ -1036,37 +1030,12 @@
     let liveAudioCtx = null;
     let liveProcessor = null;
     let liveHostWs = null;
-    let selectedAudioSource = 'tab'; // 'tab' (Google Meet/Speakers) or 'mic' (Microphone)
 
     const liveCaptureMeetBtn = document.getElementById('liveCaptureMeetBtn');
     const liveCaptureBtnText = document.getElementById('liveCaptureBtnText');
+    const liveCaptureMicBtn = document.getElementById('liveCaptureMicBtn');
     const guideCaptureBtn = document.getElementById('guideCaptureBtn');
     const liveStepGuide = document.getElementById('liveStepGuide');
-    const srcModeMeetBtn = document.getElementById('srcModeMeetBtn');
-    const srcModeMicBtn = document.getElementById('srcModeMicBtn');
-    const liveVuMeter = document.getElementById('liveVuMeter');
-
-    if (srcModeMeetBtn && srcModeMicBtn) {
-      srcModeMeetBtn.addEventListener('click', () => {
-        selectedAudioSource = 'tab';
-        srcModeMeetBtn.className = 'px-2 py-1 rounded-md bg-emerald-600 text-white transition flex items-center gap-1';
-        srcModeMicBtn.className = 'px-2 py-1 rounded-md text-slate-400 hover:text-white transition flex items-center gap-1';
-        if (isCapturingAudio) {
-          stopLiveCapture();
-          startLiveCapture();
-        }
-      });
-
-      srcModeMicBtn.addEventListener('click', () => {
-        selectedAudioSource = 'mic';
-        srcModeMicBtn.className = 'px-2 py-1 rounded-md bg-emerald-600 text-white transition flex items-center gap-1';
-        srcModeMeetBtn.className = 'px-2 py-1 rounded-md text-slate-400 hover:text-white transition flex items-center gap-1';
-        if (isCapturingAudio) {
-          stopLiveCapture();
-          startLiveCapture();
-        }
-      });
-    }
 
     if (guideCaptureBtn && liveCaptureMeetBtn) {
       guideCaptureBtn.addEventListener('click', () => liveCaptureMeetBtn.click());
@@ -1077,19 +1046,27 @@
         if (isCapturingAudio) {
           stopLiveCapture();
         } else {
-          await startLiveCapture();
+          await startLiveCapture('tab');
         }
       });
     }
 
-    async function startLiveCapture() {
-      try {
-        console.log('[Live Capture] Requesting audio source:', selectedAudioSource);
-        let captureModeLabel = 'Meet Audio Active';
+    if (liveCaptureMicBtn) {
+      liveCaptureMicBtn.addEventListener('click', async () => {
+        if (isCapturingAudio) {
+          stopLiveCapture();
+        } else {
+          await startLiveCapture('mic');
+        }
+      });
+    }
 
-        if (selectedAudioSource === 'mic') {
-          // Microphone Mode
-          captureModeLabel = 'Mic Audio Active';
+    async function startLiveCapture(sourceType = 'tab') {
+      try {
+        console.log('[Live Capture] Requesting audio mode:', sourceType);
+
+        if (sourceType === 'mic') {
+          // 🎙️ Direct Microphone Capture
           liveAudioStream = await navigator.mediaDevices.getUserMedia({
             audio: {
               channelCount: 1,
@@ -1099,55 +1076,28 @@
             }
           });
         } else {
-          // Google Meet / System Tab Loopback Mode with Auto-Fallback to Microphone
-          try {
-            liveAudioStream = await navigator.mediaDevices.getDisplayMedia({
-              video: {
-                width: { ideal: 640 },
-                height: { ideal: 360 },
-                frameRate: { ideal: 10, min: 5 }
-              },
-              audio: true
-            });
-
-            // Keep video active in a hidden background video element so Chromium compositor pumps audio frames continuously
-            let syncVideo = document.getElementById('loopbackSyncVideo');
-            if (!syncVideo) {
-              syncVideo = document.createElement('video');
-              syncVideo.id = 'loopbackSyncVideo';
-              syncVideo.autoplay = true;
-              syncVideo.muted = true;
-              syncVideo.playsInline = true;
-              syncVideo.style.display = 'none';
-              document.body.appendChild(syncVideo);
+          // 🎧 Google Meet Tab / System Loopback Audio
+          liveAudioStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: {
+              channelCount: 1,
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
             }
-            syncVideo.srcObject = liveAudioStream;
-            syncVideo.play().catch(() => {});
-
-            const audioTracks = liveAudioStream.getAudioTracks();
-            if (audioTracks.length === 0) {
-              console.warn('[Live Capture] getDisplayMedia returned 0 audio tracks, falling back to Microphone');
-              liveAudioStream.getTracks().forEach(t => t.stop());
-              liveAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-              captureModeLabel = 'Mic Audio (Auto-Fallback)';
-            }
-          } catch (displayErr) {
-            console.warn('[Live Capture] getDisplayMedia error/cancelled, auto-falling back to Microphone:', displayErr);
-            liveAudioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            captureModeLabel = 'Mic Audio (Auto-Fallback)';
-          }
+          });
         }
 
         const audioTracks = liveAudioStream.getAudioTracks();
         if (audioTracks.length === 0) {
-          alert("Audio device unavailable. Please ensure microphone permissions are granted in your browser/OS settings.");
+          alert("Audio was not shared!\n\nWhen selecting 'Chrome Tab' or 'Entire Screen' in the popup, make sure to check the box 'Also share tab audio' / 'Share system audio'.");
           stopLiveCapture();
           return;
         }
 
-        // Listen for track ending
+        // Listen for user clicking 'Stop sharing' on Chrome's floating bar
         audioTracks[0].onended = () => {
-          console.log('[Live Capture] Audio track ended');
+          console.log('[Live Capture] Audio track ended by user');
           stopLiveCapture();
         };
 
@@ -1180,20 +1130,27 @@
           setupLiveAudioProcessing();
 
           isCapturingAudio = true;
-          liveCaptureMeetBtn.className = 'bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/25 transition shrink-0';
-          liveCaptureBtnText.textContent = 'Stop Listening';
+          const isMic = sourceType === 'mic';
+
+          liveCaptureMeetBtn.className = isMic 
+            ? 'bg-slate-900/90 hover:bg-slate-800 text-slate-400 font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 border border-slate-800 transition shrink-0'
+            : 'bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-rose-600/25 transition shrink-0';
+          liveCaptureBtnText.textContent = isMic ? 'Capture Google Meet' : 'Stop Capturing Meet';
+
+          if (liveCaptureMicBtn) {
+            liveCaptureMicBtn.className = isMic 
+              ? 'bg-rose-600 hover:bg-rose-500 text-white font-bold px-2 sm:px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 shadow-md shadow-rose-600/25 transition shrink-0'
+              : 'bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-400 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition shrink-0';
+          }
 
           hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
           hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0';
-          hostStatusText.textContent = captureModeLabel;
-
-          if (liveVuMeter) {
-            liveVuMeter.classList.remove('hidden');
-            liveVuMeter.classList.add('flex');
-          }
+          hostStatusText.textContent = isMic ? 'Microphone Active' : 'Meet Audio Active';
 
           if (liveStepGuide) {
-            liveStepGuide.innerHTML = `<span class="text-emerald-400 font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> ${captureModeLabel}: Listening and streaming answers with zero delay.</span>`;
+            liveStepGuide.innerHTML = isMic 
+              ? '<span class="text-emerald-400 font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Microphone Active: Listening to your voice.</span>'
+              : '<span class="text-emerald-400 font-bold flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Capturing Google Meet audio in real time. Your microphone is completely ignored.</span>';
           }
           if (window.lucide) lucide.createIcons();
         };
@@ -1212,7 +1169,7 @@
         };
 
       } catch (err) {
-        console.warn('[Live Capture] Capture error:', err);
+        console.warn('[Live Capture] Capture cancelled or error:', err);
         if (err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
           alert('Audio Capture Notice: ' + (err.message || 'Unable to capture audio.'));
         }
@@ -1232,8 +1189,7 @@
       liveProcessor.connect(muteGain);
       muteGain.connect(liveAudioCtx.destination);
 
-      const vuBars = document.querySelectorAll('.vu-bar');
-      const SILENCE_THRESHOLD_RMS = 0.0006; // Highly sensitive noise floor
+      const SILENCE_THRESHOLD_RMS = 0.0015; // Noise floor for ambient silence
 
       liveProcessor.onaudioprocess = (e) => {
         if (!isCapturingAudio || !liveHostWs || liveHostWs.readyState !== WebSocket.OPEN) return;
@@ -1245,21 +1201,6 @@
           sumSquares += inputData[i] * inputData[i];
         }
         const rms = Math.sqrt(sumSquares / inputData.length);
-
-        // Live Dancing Sound Wave VU Meter
-        if (vuBars && vuBars.length >= 4) {
-          if (rms > 0.0008) {
-            vuBars[0].style.height = `${Math.min(100, Math.max(30, Math.floor(rms * 1500)))}%`;
-            vuBars[1].style.height = `${Math.min(100, Math.max(45, Math.floor(rms * 2400)))}%`;
-            vuBars[2].style.height = `${Math.min(100, Math.max(55, Math.floor(rms * 2800)))}%`;
-            vuBars[3].style.height = `${Math.min(100, Math.max(30, Math.floor(rms * 1800)))}%`;
-          } else {
-            vuBars[0].style.height = '20%';
-            vuBars[1].style.height = '30%';
-            vuBars[2].style.height = '25%';
-            vuBars[3].style.height = '20%';
-          }
-        }
 
         // Convert Float32 to Int16 PCM
         const pcm16 = new Int16Array(inputData.length);
@@ -1280,11 +1221,6 @@
     function stopLiveCapture() {
       isCapturingAudio = false;
       isHostCapturing = false;
-
-      if (liveVuMeter) {
-        liveVuMeter.classList.add('hidden');
-        liveVuMeter.classList.remove('flex');
-      }
 
       if (liveProcessor) {
         try { liveProcessor.disconnect(); } catch (e) {}
@@ -1308,7 +1244,11 @@
 
       if (liveCaptureMeetBtn) {
         liveCaptureMeetBtn.className = 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 transition shrink-0';
-        liveCaptureBtnText.textContent = 'Start Listening';
+        liveCaptureBtnText.textContent = 'Capture Google Meet Audio';
+      }
+
+      if (liveCaptureMicBtn) {
+        liveCaptureMicBtn.className = 'bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition shrink-0';
       }
 
       if (liveStepGuide) {
