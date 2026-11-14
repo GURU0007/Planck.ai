@@ -302,7 +302,7 @@ app.get('/api/status', (req, res) => {
     deepgramConfigured: Boolean(process.env.DEEPGRAM_API_KEY && process.env.DEEPGRAM_API_KEY !== 'YOUR_DEEPGRAM_API_KEY'),
     groqConfigured: Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'YOUR_GROQ_API_KEY'),
     telnyxConfigured: Boolean(process.env.TELNYX_API_KEY && process.env.TELNYX_API_KEY !== 'YOUR_TELNYX_API_KEY'),
-    telnyxNumber: process.env.TELNYX_PHONE_NUMBER || '+18007526250',
+    telnyxNumber: process.env.TELNYX_PHONE_NUMBER || '+19793400234',
   });
 });
 
@@ -328,7 +328,7 @@ function broadcastToRoom(roomId, payload) {
 // Telecom Configuration & Dial-code info
 app.get('/api/telecom/config', (req, res) => {
   const telnyxApiKey = process.env.TELNYX_API_KEY || '';
-  const telnyxNumber = process.env.TELNYX_PHONE_NUMBER || '+18007526250'; // Default Planck Bridge DID
+  const telnyxNumber = process.env.TELNYX_PHONE_NUMBER || '+19793400234'; // Planck Real Telnyx DID
   const configured = Boolean(telnyxApiKey && telnyxApiKey !== 'YOUR_TELNYX_API_KEY');
   
   res.json({
@@ -486,7 +486,7 @@ app.post('/api/telecom/outbound', async (req, res) => {
   if (!to) return res.status(400).json({ error: 'Phone number is required' });
 
   const telnyxApiKey = process.env.TELNYX_API_KEY;
-  const fromNumber = process.env.TELNYX_PHONE_NUMBER || '+18007526250';
+  const fromNumber = process.env.TELNYX_PHONE_NUMBER || '+19793400234';
   const targetRoomId = (roomId || 'main_room').trim();
 
   if (!telnyxApiKey || telnyxApiKey === 'YOUR_TELNYX_API_KEY') {
