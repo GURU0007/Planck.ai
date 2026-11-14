@@ -196,13 +196,21 @@ function autocorrectTechTerms(text) {
   return corrected;
 }
 
-// Clean and normalize question text for LLM generation (strip STT counting numbers, filler tokens, repetitions)
+// Clean and normalize question text for LLM generation (strip STT counting numbers, filler tokens, repetitions, silence artifacts)
 function cleanQuestionForLLM(rawText) {
   if (!rawText) return '';
   let cleaned = autocorrectTechTerms(rawText);
 
-  // Strip leading numbering or counting artifacts like "Three what is...", "One explain...", "2 what is..."
-  cleaned = cleaned.replace(/^(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)[\s,.:;—-]+(?=what|how|why|can|could|explain|describe|tell|difference|is|are|which)/i, '');
+  // Strip trailing repetitive hallucinated characters or letters: e.g. "A, A, A, A, A, A, A," or "uh, uh, uh"
+  cleaned = cleaned.replace(/(?:,\s*[A-Za-z0-9]|\s+[A-Za-z0-9]){3,}\s*$/gi, '');
+  cleaned = cleaned.replace(/(?:[A-Za-z]\s*,\s*){3,}[A-Za-z]?/g, '');
+  cleaned = cleaned.replace(/[,;\s]+$/, '');
+
+  // Strip surrounding quotes if present
+  cleaned = cleaned.replace(/^["'“”]+|["'“”]+$/g, '').trim();
+
+  // Strip leading question numbers or labels: e.g. "Question four which...", "Three what is...", "2 what is..."
+  cleaned = cleaned.replace(/^(?:Question\s+(?:\w+|\d+)|one|two|three|four|five|six|seven|eight|nine|ten|\d+)[\s,.:;—-]+/i, '');
   
   // Strip leading conversational filler
   cleaned = cleaned.replace(/^(?:um|uh|so|like|yeah|okay|hey|alright)[\s,.:;—-]+/i, '');
@@ -277,7 +285,7 @@ wss.on('connection', (ws, req) => {
     console.log(`[Spectator WS] Connected to room: "${roomId}"`);
     let room = liveRooms.get(roomId);
     if (!room) {
-      room = { hostWs: null, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: null };
+      room = { hostWs: null, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: null, answerStyle: 'bullets', isGeneratingAnswer: false };
       liveRooms.set(roomId, room);
     }
 
@@ -309,6 +317,7 @@ wss.on('connection', (ws, req) => {
       history: room.history,
       currentQuestion: room.currentQuestion,
       currentAnswer: room.currentAnswer,
+      answerStyle: room.answerStyle || 'bullets',
     }));
 
     // Inform host of updated spectator count
@@ -318,6 +327,15 @@ wss.on('connection', (ws, req) => {
         count: room.spectators.size
       }));
     }
+
+    ws.on('message', (msg) => {
+      try {
+        const parsed = JSON.parse(msg.toString());
+        if (parsed.type === 'set_answer_style' && room) {
+          room.answerStyle = parsed.style || 'bullets';
+        }
+      } catch (e) {}
+    });
 
     ws.on('close', () => {
       room.spectators.delete(ws);
@@ -336,11 +354,12 @@ wss.on('connection', (ws, req) => {
   console.log(`[WebSocket] Host connected (Sample Rate: ${clientSampleRate}Hz, Room: ${roomId})`);
   let room = liveRooms.get(roomId);
   if (!room) {
-    room = { hostWs: ws, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: providedPin || null };
+    room = { hostWs: ws, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: providedPin || null, answerStyle: 'bullets', isGeneratingAnswer: false };
     liveRooms.set(roomId, room);
   } else {
     room.hostWs = ws;
     if (providedPin) room.pin = providedPin;
+    if (!room.answerStyle) room.answerStyle = 'bullets';
   }
 
   // Smart Adopt: If spectators are waiting in empty default rooms, adopt them into this active room!
@@ -619,6 +638,13 @@ wss.on('connection', (ws, req) => {
             console.log(`[Room] PIN updated for room "${roomId}": ${room.pin ? 'PIN Protected' : 'Public'}`);
           }
         }
+        if (parsed.type === 'set_answer_style') {
+          if (room) {
+            room.answerStyle = parsed.style || 'bullets';
+            console.log(`[Room] Answer style updated for room "${roomId}": ${room.answerStyle}`);
+            broadcastToSpectators({ type: 'answer_style_updated', style: room.answerStyle });
+          }
+        }
         if (parsed.type === 'trigger_manual_answer') {
           console.log(`[Copilot Instant Trigger] User pressed Generate button for: "${parsed.text}"`);
           if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
@@ -654,11 +680,20 @@ function getOptimizedCandidateContext(rawContext) {
   return rawContext.trim();
 }
 
-// Ultra-fast streaming answer generator with automatic model fallback and live spectator mirroring
+// Ultra-fast streaming answer generator with automatic model fallback, style selection, and live spectator mirroring
 async function generateInstantAnswer(rawQuestion, ws, groq, roomId) {
   const room = roomId ? liveRooms.get(roomId) : null;
   const question = cleanQuestionForLLM(rawQuestion);
   const answerId = 'ans_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
+  // Concurrency Lock: Prevent simultaneous generation runs for the same room
+  if (room) {
+    if (room.isGeneratingAnswer) {
+      console.log(`[Groq Lock] Generation already active for room "${roomId}". Skipping duplicate trigger.`);
+      return;
+    }
+    room.isGeneratingAnswer = true;
+  }
 
   function broadcast(obj) {
     obj.answerId = answerId;
@@ -678,37 +713,66 @@ async function generateInstantAnswer(rawQuestion, ws, groq, roomId) {
     }
   }
 
-  if (!groq) {
+  try {
+    if (!groq) {
+      broadcast({
+        type: 'answer_error',
+        message: 'Groq API key is not configured in .env.'
+      });
+      return;
+    }
+
+    if (room) {
+      room.currentQuestion = question;
+      room.currentAnswer = '';
+    }
+
     broadcast({
-      type: 'answer_error',
-      message: 'Groq API key is not configured in .env.'
+      type: 'answer_start',
+      question: question,
+      timestamp: new Date().toISOString(),
     });
-    return;
-  }
 
-  if (room) {
-    room.currentQuestion = question;
-    room.currentAnswer = '';
-  }
+    const optimizedContext = getOptimizedCandidateContext(candidateContext);
+    const currentStyle = (room && room.answerStyle) || 'bullets';
+    let styleInstructions = '';
+    let maxTokensToGenerate = 160;
 
-  broadcast({
-    type: 'answer_start',
-    question: question,
-    timestamp: new Date().toISOString(),
-  });
-
-  const optimizedContext = getOptimizedCandidateContext(candidateContext);
-  const messages = [
-    {
-      role: 'system',
-      content: `You are an elite Staff Software Engineer providing instant, glanceable interview talking points for a live technical interview. The candidate will speak these points aloud.
-
-CRITICAL FORMAT REQUIREMENTS (MUST BE INSTANTLY SCANABLE IN <2 SECONDS):
+    if (currentStyle === 'deep') {
+      maxTokensToGenerate = 240;
+      styleInstructions = `
+CRITICAL FORMAT REQUIREMENTS (DEEP ARCHITECTURE MODE):
+• DIRECT ANSWER: 1 concise sentence answering the core technical distinction directly.
+• 3 DETAILED TALKING POINTS:
+  - Architecture & Runtime Mechanics: Under the hood execution, memory management, threads, or IoC lifecycle.
+  - Production Trade-offs: Scalability bottlenecks, latency vs throughput, and failure modes.
+  - Real-World Best Practice: Enterprise design pattern or code configuration rule.
+• Keep total length under 125 words.`;
+    } else if (currentStyle === 'direct') {
+      maxTokensToGenerate = 90;
+      styleInstructions = `
+CRITICAL FORMAT REQUIREMENTS (RAPID-FIRE / DIRECT MODE):
+• 1 to 2 crisp, high-impact sentences maximum answering the question directly.
+• Zero bullet points, zero fluff. Direct, authoritative verbal response under 35 words.`;
+    } else {
+      // Default: 'bullets'
+      maxTokensToGenerate = 150;
+      styleInstructions = `
+CRITICAL FORMAT REQUIREMENTS (PUNCHY BULLETS MODE - SCANABLE IN <2 SECONDS):
 • DIRECT ANSWER: 1 crisp sentence answering the core technical distinction directly.
 • 2 TO 3 CONCISE BULLET POINTS:
-  - Format each bullet as: • **Concept Name**: Direct technical mechanics, lifecycle, and runtime role.
+  - Format each bullet as: • **Concept Name**: Direct technical mechanics, lifecycle, and runtime role (<15 words).
   - Keep each bullet to 1-2 lines. Focus on architecture, memory, concurrency, or dependency injection.
 • PRO-TIP / GOTCHA: 1 sharp senior engineer insight (e.g. scope trap, production memory leak, or thread safety).
+• Keep total response under 65 words so it can be spoken naturally.`;
+    }
+
+    const messages = [
+      {
+        role: 'system',
+        content: `You are an elite Staff Software Engineer providing instant, glanceable interview talking points for a live technical interview. The candidate will speak these points aloud.
+
+${styleInstructions}
 
 STT PHONETIC ERROR CORRECTION (MANDATORY):
 1. The question comes from live speech-to-text and often contains phonetic mishearings or filler words:
@@ -718,70 +782,73 @@ STT PHONETIC ERROR CORRECTION (MANDATORY):
    - "docker compose" / "docker composed".
 2. Silently deduce the TRUE technical concept the interviewer intended and answer it directly.
 3. NEVER lecture the interviewer on their mishearing or grammar. Answer the real technical concept with complete confidence.
-4. Keep total response around 65 to 90 words. Avoid giant essay walls of text.
 
 Candidate Profile:
 ${optimizedContext}`
-    },
-    {
-      role: 'user',
-      content: question
-    }
-  ];
+      },
+      {
+        role: 'user',
+        content: question
+      }
+    ];
 
-  // Primary model and fallback model with separate rate limit pools
-  const modelsToTry = ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
-  let streamSuccess = false;
-  let lastError = null;
+    // Primary model and fallback model with separate rate limit pools
+    const modelsToTry = ['qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
+    let streamSuccess = false;
+    let lastError = null;
 
-  for (const model of modelsToTry) {
-    try {
-      console.log(`[Groq] Generating answer with model: ${model}`);
-      const stream = await groq.chat.completions.create({
-        model: model,
-        messages: messages,
-        stream: true,
-        temperature: 0.25,
-        max_tokens: 180,
-      });
+    for (const model of modelsToTry) {
+      try {
+        console.log(`[Groq] Generating answer with model: ${model} [Style: ${currentStyle}]`);
+        const stream = await groq.chat.completions.create({
+          model: model,
+          messages: messages,
+          stream: true,
+          temperature: 0.25,
+          max_tokens: maxTokensToGenerate,
+        });
 
-      for await (const chunk of stream) {
-        const token = chunk.choices[0]?.delta?.content || '';
-        if (token) {
-          if (room) room.currentAnswer += token;
-          broadcast({ type: 'answer_token', token });
+        let tokenIndex = 0;
+        for await (const chunk of stream) {
+          const token = chunk.choices[0]?.delta?.content || '';
+          if (token) {
+            if (room) room.currentAnswer += token;
+            broadcast({ type: 'answer_token', token, tokenIndex: tokenIndex++ });
+          }
+        }
+
+        if (room) {
+          room.history.push({
+            question: room.currentQuestion,
+            answer: room.currentAnswer,
+            time: new Date().toLocaleTimeString()
+          });
+        }
+
+        broadcast({ type: 'answer_done' });
+        streamSuccess = true;
+        break; // Successfully completed!
+      } catch (err) {
+        console.warn(`[Groq] Model ${model} failed:`, err.message);
+        lastError = err;
+        if (err.status === 429 || err.message?.includes('429') || err.message?.includes('Rate limit')) {
+          console.log(`[Groq] Rate limit hit on ${model}, attempting fallback...`);
+          continue;
+        } else {
+          break;
         }
       }
-
-      if (room) {
-        room.history.push({
-          question: room.currentQuestion,
-          answer: room.currentAnswer,
-          time: new Date().toLocaleTimeString()
-        });
-      }
-
-      broadcast({ type: 'answer_done' });
-      streamSuccess = true;
-      break; // Successfully completed!
-    } catch (err) {
-      console.warn(`[Groq] Model ${model} failed:`, err.message);
-      lastError = err;
-      if (err.status === 429 || err.message?.includes('429') || err.message?.includes('Rate limit')) {
-        console.log(`[Groq] Rate limit hit on ${model}, attempting fallback...`);
-        continue;
-      } else {
-        break;
-      }
     }
-  }
 
-  if (!streamSuccess) {
-    let cleanMessage = lastError ? lastError.message : 'Unknown generation error';
-    if (cleanMessage.includes('Rate limit') || cleanMessage.includes('429')) {
-      cleanMessage = 'Groq rate limit cooldown active. Ready again in ~20 seconds.';
+    if (!streamSuccess) {
+      let cleanMessage = lastError ? lastError.message : 'Unknown generation error';
+      if (cleanMessage.includes('Rate limit') || cleanMessage.includes('429')) {
+        cleanMessage = 'Groq rate limit cooldown active. Ready again in ~20 seconds.';
+      }
+      broadcast({ type: 'answer_error', message: cleanMessage });
     }
-    broadcast({ type: 'answer_error', message: cleanMessage });
+  } finally {
+    if (room) room.isGeneratingAnswer = false;
   }
 }
 

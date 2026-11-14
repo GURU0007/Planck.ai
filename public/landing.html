@@ -4,6 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Planck.ai | Real-Time Voice AI Copilot for High-Stakes Tech Interviews</title>
+  <!-- PWA Manifest & App Meta -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <meta name="theme-color" content="#020617">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -258,6 +264,10 @@
               <i data-lucide="download" class="w-3.5 h-3.5"></i> Mac (.command)
             </a>
           </div>
+          <button id="pwaLandingBtn" onclick="installLandingPwa()" class="w-full bg-slate-900/90 hover:bg-slate-850 hover:bg-slate-800 text-slate-300 hover:text-white py-1.5 px-2 rounded-xl text-[11px] font-semibold text-center transition flex items-center justify-center gap-1.5 border border-slate-800">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-emerald-400"></i>
+            <span>Install Native Desktop App (Zero Warnings)</span>
+          </button>
         </div>
       </div>
 
@@ -527,6 +537,27 @@
     document.getElementById('detailedGuideModal').addEventListener('click', (e) => {
       if (e.target.id === 'detailedGuideModal') closeDetailedGuideModal();
     });
+    // Service worker registration & PWA installation
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+
+    let landingDeferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      landingDeferredPrompt = e;
+    });
+
+    function installLandingPwa() {
+      if (landingDeferredPrompt) {
+        landingDeferredPrompt.prompt();
+        landingDeferredPrompt.userChoice.then(() => {
+          landingDeferredPrompt = null;
+        });
+      } else {
+        alert('To install Planck.ai as a desktop app:\n\n• On Chrome/Edge: Click the Install icon in your address bar (or Menu > "Install Planck.ai")\n• On Mac Safari: File > "Add to Dock"');
+      }
+    }
   </script>
 </body>
 </html>
