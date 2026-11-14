@@ -287,7 +287,7 @@ wss.on('connection', (ws, req) => {
     console.log(`[Spectator WS] Connected to room: "${roomId}"`);
     let room = liveRooms.get(roomId);
     if (!room) {
-      room = { hostWs: null, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: null };
+      room = { hostWs: null, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: null, answerStyle: 'bullets' };
       liveRooms.set(roomId, room);
     }
 
@@ -319,6 +319,7 @@ wss.on('connection', (ws, req) => {
       history: room.history,
       currentQuestion: room.currentQuestion,
       currentAnswer: room.currentAnswer,
+      answerStyle: room.answerStyle || 'bullets',
     }));
 
     // Inform host of updated spectator count
@@ -328,6 +329,15 @@ wss.on('connection', (ws, req) => {
         count: room.spectators.size
       }));
     }
+
+    ws.on('message', (msg) => {
+      try {
+        const parsed = JSON.parse(msg.toString());
+        if (parsed.type === 'set_answer_style' && room) {
+          room.answerStyle = parsed.style || 'bullets';
+        }
+      } catch (e) {}
+    });
 
     ws.on('close', () => {
       room.spectators.delete(ws);
@@ -346,11 +356,12 @@ wss.on('connection', (ws, req) => {
   console.log(`[WebSocket] Host connected (Sample Rate: ${clientSampleRate}Hz, Room: ${roomId})`);
   let room = liveRooms.get(roomId);
   if (!room) {
-    room = { hostWs: ws, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: providedPin || null };
+    room = { hostWs: ws, spectators: new Set(), history: [], currentQuestion: '', currentAnswer: '', pin: providedPin || null, answerStyle: 'bullets' };
     liveRooms.set(roomId, room);
   } else {
     room.hostWs = ws;
     if (providedPin) room.pin = providedPin;
+    if (!room.answerStyle) room.answerStyle = 'bullets';
   }
 
   // Smart Adopt: If spectators are waiting in empty default rooms, adopt them into this active room!
@@ -629,6 +640,13 @@ wss.on('connection', (ws, req) => {
             console.log(`[Room] PIN updated for room "${roomId}": ${room.pin ? 'PIN Protected' : 'Public'}`);
           }
         }
+        if (parsed.type === 'set_answer_style') {
+          if (room) {
+            room.answerStyle = parsed.style || 'bullets';
+            console.log(`[Room] Answer style updated for room "${roomId}": ${room.answerStyle}`);
+            broadcastToSpectators({ type: 'answer_style_updated', style: room.answerStyle });
+          }
+        }
         if (parsed.type === 'trigger_manual_answer') {
           console.log(`[Copilot Instant Trigger] User pressed Generate button for: "${parsed.text}"`);
           if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
@@ -708,17 +726,42 @@ async function generateInstantAnswer(rawQuestion, ws, groq, roomId) {
   });
 
   const optimizedContext = getOptimizedCandidateContext(candidateContext);
+  const currentStyle = (room && room.answerStyle) || 'bullets';
+  let styleInstructions = '';
+  let maxTokensToGenerate = 160;
+
+  if (currentStyle === 'deep') {
+    maxTokensToGenerate = 240;
+    styleInstructions = `
+CRITICAL FORMAT REQUIREMENTS (DEEP ARCHITECTURE MODE):
+• DIRECT ANSWER: 1 concise sentence answering the core technical distinction directly.
+• 3 DETAILED TALKING POINTS:
+  - Architecture & Runtime Mechanics: Under the hood execution, memory management, threads, or IoC lifecycle.
+  - Real-World Best Practice: Enterprise design pattern or code configuration rule.
+• Keep total length under 125 words.`;
+  } else if (currentStyle === 'direct') {
+    maxTokensToGenerate = 90;
+    styleInstructions = `
+CRITICAL FORMAT REQUIREMENTS (RAPID-FIRE / DIRECT MODE):
+• 1 to 2 crisp, high-impact sentences maximum answering the question directly.
+• Zero bullet points, zero fluff. Direct, authoritative verbal response under 35 words.`;
+  } else {
+    // Default: 'bullets'
+    maxTokensToGenerate = 150;
+    styleInstructions = `
+CRITICAL FORMAT REQUIREMENTS (PUNCHY BULLETS MODE - SCANABLE IN <2 SECONDS):
+• DIRECT ANSWER: 1 crisp sentence answering the core technical distinction directly.
+• 2 TO 3 CONCISE BULLET POINTS:
+  - Format each bullet as: • **Concept Name**: Direct technical mechanics, lifecycle, and runtime role.
+• Keep total verbal response under 65 words so it can be spoken naturally.`;
+  }
+
   const messages = [
     {
       role: 'system',
       content: `You are an elite Staff Software Engineer providing instant, glanceable interview talking points for a live technical interview. The candidate will speak these points aloud.
 
-CRITICAL FORMAT REQUIREMENTS (MUST BE INSTANTLY SCANABLE IN <2 SECONDS):
-• DIRECT ANSWER: 1 crisp sentence answering the core technical distinction directly.
-• 2 TO 3 CONCISE BULLET POINTS:
-  - Format each bullet as: • **Concept Name**: Direct technical mechanics, lifecycle, and runtime role.
-  - Keep each bullet to 1-2 lines. Focus on architecture, memory, concurrency, or dependency injection.
-• PRO-TIP / GOTCHA: 1 sharp senior engineer insight (e.g. scope trap, production memory leak, or thread safety).
+${styleInstructions}
 
 STT PHONETIC ERROR CORRECTION (MANDATORY):
 1. The question comes from live speech-to-text and often contains phonetic mishearings or filler words:
@@ -728,7 +771,6 @@ STT PHONETIC ERROR CORRECTION (MANDATORY):
    - "docker compose" / "docker composed".
 2. Silently deduce the TRUE technical concept the interviewer intended and answer it directly.
 3. NEVER lecture the interviewer on their mishearing or grammar. Answer the real technical concept with complete confidence.
-4. Keep total response around 65 to 90 words. Avoid giant essay walls of text.
 
 Candidate Profile:
 ${optimizedContext}`
@@ -746,10 +788,14 @@ ${optimizedContext}`
 
   for (const model of modelsToTry) {
     try {
-      console.log(`[Groq] Generating answer with model: ${model}`);
+      console.log(`[Groq] Generating answer with model: ${model} [Style: ${currentStyle}]`);
       const stream = await groq.chat.completions.create({
         model: model,
         messages: messages,
+        stream: true,
+        temperature: 0.25,
+        max_tokens: maxTokensToGenerate,
+      });
         stream: true,
         temperature: 0.25,
         max_tokens: 180,
