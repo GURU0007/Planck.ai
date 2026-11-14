@@ -10,7 +10,27 @@ const Groq = require('groq-sdk');
 const PORT = process.env.PORT || 3000;
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server, path: '/ws' });
+
+// Multiplex WebSocket servers:
+// 1. /ws -> Main Browser / Desktop Stealth HUD audio & control
+// 2. /telecom-stream -> Carrier (Telnyx) Silent Inbound Audio Media Stream
+const wss = new WebSocket.Server({ noServer: true });
+const telecomWss = new WebSocket.Server({ noServer: true });
+
+server.on('upgrade', (request, socket, head) => {
+  const pathname = url.parse(request.url).pathname;
+  if (pathname === '/ws') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit('connection', ws, request);
+    });
+  } else if (pathname === '/telecom-stream') {
+    telecomWss.handleUpgrade(request, socket, head, (ws) => {
+      telecomWss.emit('connection', ws, request);
+    });
+  } else {
+    socket.destroy();
+  }
+});
 
 // Disable caching so clients and Render CDN always get the freshest 60 FPS assets immediately
 app.use((req, res, next) => {
@@ -272,6 +292,333 @@ app.get('/api/status', (req, res) => {
   res.json({
     deepgramConfigured: Boolean(process.env.DEEPGRAM_API_KEY && process.env.DEEPGRAM_API_KEY !== 'YOUR_DEEPGRAM_API_KEY'),
     groqConfigured: Boolean(process.env.GROQ_API_KEY && process.env.GROQ_API_KEY !== 'YOUR_GROQ_API_KEY'),
+    telnyxConfigured: Boolean(process.env.TELNYX_API_KEY && process.env.TELNYX_API_KEY !== 'YOUR_TELNYX_API_KEY'),
+    telnyxNumber: process.env.TELNYX_PHONE_NUMBER || '+18007526250',
+  });
+});
+
+// ========================================================
+// TELECOM SILENT FORKING & PHONE INTERVIEW ENGINE
+// ========================================================
+const activeTelecomCalls = new Map();
+
+function broadcastToRoom(roomId, payload) {
+  const room = liveRooms.get(roomId);
+  if (!room) return;
+  const msg = JSON.stringify(payload);
+  if (room.hostWs && room.hostWs.readyState === WebSocket.OPEN) {
+    room.hostWs.send(msg);
+  }
+  room.spectators.forEach(s => {
+    if (s.readyState === WebSocket.OPEN) {
+      s.send(msg);
+    }
+  });
+}
+
+// Telecom Configuration & Dial-code info
+app.get('/api/telecom/config', (req, res) => {
+  const telnyxApiKey = process.env.TELNYX_API_KEY || '';
+  const telnyxNumber = process.env.TELNYX_PHONE_NUMBER || '+18007526250'; // Default Planck Bridge DID
+  const configured = Boolean(telnyxApiKey && telnyxApiKey !== 'YOUR_TELNYX_API_KEY');
+  
+  res.json({
+    configured,
+    bridgeNumber: telnyxNumber,
+    carrierForwardCode: `*67*${telnyxNumber.replace(/[^0-9+]/g, '')}#`,
+    carrierDeactivateCode: '##67#',
+    instructions: 'Dial code on your phone to activate automatic stealth forward-on-decline.'
+  });
+});
+
+// Telnyx Call Control v2 Webhook
+app.post('/api/telecom/webhook', async (req, res) => {
+  const event = req.body?.data;
+  if (!event) return res.sendStatus(200);
+
+  const eventType = event.event_type;
+  const payload = event.payload || {};
+  const callControlId = payload.call_control_id;
+  const from = payload.from || 'Unknown Recruiter';
+  const to = payload.to || '';
+  console.log(`[Telecom Webhook] Event: ${eventType} | Call: ${callControlId} | From: ${from} | To: ${to}`);
+
+  // Auto-route to active room or main_room
+  let targetRoomId = 'main_room';
+  for (const [rId, roomObj] of liveRooms.entries()) {
+    if (roomObj.hostWs && roomObj.hostWs.readyState === WebSocket.OPEN) {
+      targetRoomId = rId;
+      break;
+    }
+  }
+
+  if (eventType === 'call.initiated') {
+    activeTelecomCalls.set(callControlId, {
+      callControlId,
+      from,
+      to,
+      roomId: targetRoomId,
+      status: 'ringing',
+      startTime: Date.now()
+    });
+
+    // Notify candidate's open prompter / stealth HUD
+    broadcastToRoom(targetRoomId, {
+      type: 'telecom_incoming_call',
+      callControlId,
+      from,
+      to,
+      roomId: targetRoomId,
+      timestamp: new Date().toISOString()
+    });
+  } else if (eventType === 'call.answered') {
+    const callData = activeTelecomCalls.get(callControlId);
+    if (callData) {
+      callData.status = 'answered';
+      broadcastToRoom(callData.roomId, {
+        type: 'telecom_call_answered',
+        callControlId,
+        from: callData.from
+      });
+
+      // Start silent media fork on inbound_track (Recruiter voice only!)
+      const telnyxApiKey = process.env.TELNYX_API_KEY;
+      if (telnyxApiKey && telnyxApiKey !== 'YOUR_TELNYX_API_KEY') {
+        const streamUrl = (process.env.PUBLIC_WS_URL || 'wss://planck-ai.onrender.com') + `/telecom-stream?callControlId=${encodeURIComponent(callControlId)}&roomId=${encodeURIComponent(callData.roomId)}`;
+        try {
+          await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/fork_media_start`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${telnyxApiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              media_url: streamUrl,
+              stream_type: 'websocket',
+              tracks: 'inbound_track' // ONLY capture recruiter voice!
+            })
+          });
+          console.log(`[Telecom Fork] Started inbound media fork to ${streamUrl}`);
+        } catch (forkErr) {
+          console.warn('[Telecom Fork] Failed to start media fork:', forkErr.message);
+        }
+      }
+    }
+  } else if (eventType === 'call.hangup') {
+    const callData = activeTelecomCalls.get(callControlId);
+    if (callData) {
+      broadcastToRoom(callData.roomId, {
+        type: 'telecom_call_ended',
+        callControlId
+      });
+      activeTelecomCalls.delete(callControlId);
+    }
+  }
+
+  res.sendStatus(200);
+});
+
+// UI Action: Accept Incoming Call
+app.post('/api/telecom/answer', async (req, res) => {
+  const { callControlId } = req.body;
+  if (!callControlId) return res.status(400).json({ error: 'callControlId is required' });
+
+  const telnyxApiKey = process.env.TELNYX_API_KEY;
+  if (telnyxApiKey && telnyxApiKey !== 'YOUR_TELNYX_API_KEY') {
+    try {
+      await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${telnyxApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+      return res.json({ ok: true, message: 'Call answered via Telnyx' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  res.json({ ok: true, message: 'Answer acknowledged (Simulation mode)' });
+});
+
+// UI Action: Hangup Call
+app.post('/api/telecom/hangup', async (req, res) => {
+  const { callControlId } = req.body;
+  if (!callControlId) return res.status(400).json({ error: 'callControlId is required' });
+
+  const telnyxApiKey = process.env.TELNYX_API_KEY;
+  if (telnyxApiKey && telnyxApiKey !== 'YOUR_TELNYX_API_KEY') {
+    try {
+      await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${telnyxApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+      });
+    } catch (err) {}
+  }
+
+  const callData = activeTelecomCalls.get(callControlId);
+  if (callData) {
+    broadcastToRoom(callData.roomId, { type: 'telecom_call_ended', callControlId });
+    activeTelecomCalls.delete(callControlId);
+  }
+
+  res.json({ ok: true, message: 'Call hung up' });
+});
+
+// UI Action: Simulate 5-Minute Interactive Recruiter Demo Call
+app.post('/api/telecom/simulate', async (req, res) => {
+  const { roomId } = req.body;
+  const targetRoomId = (roomId || 'main_room').trim();
+  const demoCallId = 'demo_' + Date.now();
+
+  activeTelecomCalls.set(demoCallId, {
+    callControlId: demoCallId,
+    from: '+1 (415) 555-0199',
+    callerName: 'Amazon Technical Recruiter',
+    to: '+1 (408) 555-0123',
+    roomId: targetRoomId,
+    status: 'ringing',
+    isDemo: true,
+    startTime: Date.now()
+  });
+
+  // Ring the web prompter immediately!
+  broadcastToRoom(targetRoomId, {
+    type: 'telecom_incoming_call',
+    callControlId: demoCallId,
+    from: '+1 (415) 555-0199',
+    callerName: 'Amazon Technical Recruiter',
+    to: 'Your Personal Phone',
+    isDemo: true,
+    timestamp: new Date().toISOString()
+  });
+
+  res.json({ ok: true, callControlId: demoCallId });
+});
+
+// Dedicated Telecom WebSocket Stream Server (Telnyx Inbound Audio Fork)
+telecomWss.on('connection', (ws, req) => {
+  const parsedUrl = url.parse(req.url, true);
+  const callControlId = parsedUrl.query.callControlId;
+  const roomId = (parsedUrl.query.roomId || 'main_room').trim();
+  console.log(`[Telecom Stream] Carrier connected for call: ${callControlId} (Room: ${roomId})`);
+
+  const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
+  const groqApiKey = process.env.GROQ_API_KEY;
+  if (!deepgramApiKey) {
+    console.error('[Telecom Stream] Missing DEEPGRAM_API_KEY');
+    return ws.close();
+  }
+
+  const deepgram = createClient(deepgramApiKey);
+  let groq = null;
+  if (groqApiKey) {
+    groq = new Groq({ apiKey: groqApiKey });
+  }
+
+  // Configure Deepgram for 8kHz PCMU / mulaw telecom audio
+  const dgConnection = deepgram.listen.live({
+    model: 'nova-3',
+    language: 'en',
+    smart_format: true,
+    punctuate: true,
+    interim_results: true,
+    endpointing: 350,
+    utterance_end_ms: 1000,
+    vad_events: true,
+    encoding: 'mulaw',
+    sample_rate: 8000,
+    channels: 1,
+  });
+
+  let currentTurnPhrases = [];
+  let isGenerating = false;
+  let turnDebounceTimer = null;
+
+  dgConnection.on(LiveTranscriptionEvents.Open, () => {
+    console.log(`[Telecom STT] Deepgram Nova-3 active for phone call ${callControlId} (8000Hz mulaw)`);
+  });
+
+  dgConnection.on(LiveTranscriptionEvents.Transcript, async (data) => {
+    const rawText = data.channel.alternatives[0]?.transcript || '';
+    if (!rawText.trim()) return;
+
+    const corrected = autocorrectTechTerms(rawText);
+    const isFinal = data.is_final;
+    const isSpeechFinal = data.speech_final;
+
+    if (isFinal) {
+      currentTurnPhrases.push(corrected);
+      console.log(`[Phone STT Final] "${corrected}"`);
+
+      // Silence confirmation
+      if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
+      turnDebounceTimer = setTimeout(async () => {
+        const fullQ = currentTurnPhrases.join(' ').trim();
+        if (fullQ.length >= 8 && !isIncompleteThought(fullQ) && !isGenerating) {
+          currentTurnPhrases = [];
+          isGenerating = true;
+          console.log(`[Phone Copilot Auto-Trigger] Generating answer for: "${fullQ}"`);
+          const roomObj = liveRooms.get(roomId);
+          await generateInstantAnswer(fullQ, roomObj?.hostWs, groq, roomId);
+          isGenerating = false;
+        }
+      }, 800);
+    }
+
+    const payload = {
+      type: 'transcript',
+      text: corrected,
+      isFinal,
+      isSpeechFinal,
+      isPhoneCall: true
+    };
+    broadcastToRoom(roomId, payload);
+
+    if (isSpeechFinal) {
+      const fullTurn = currentTurnPhrases.join(' ').trim() || corrected;
+      if (!isIncompleteThought(fullTurn) && fullTurn.length >= 8 && !isGenerating) {
+        if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
+        currentTurnPhrases = [];
+        isGenerating = true;
+        console.log(`[Phone Speech Final Trigger] Answering: "${fullTurn}"`);
+        const roomObj = liveRooms.get(roomId);
+        await generateInstantAnswer(fullTurn, roomObj?.hostWs, groq, roomId);
+        isGenerating = false;
+      }
+    }
+  });
+
+  ws.on('message', (msg) => {
+    try {
+      const data = JSON.parse(msg.toString());
+      if (data.event === 'media' && data.media && data.media.payload) {
+        // Base64 mulaw payload from Telnyx
+        const audioBuffer = Buffer.from(data.media.payload, 'base64');
+        if (dgConnection && dgConnection.getReadyState() === 1) {
+          dgConnection.send(audioBuffer);
+        }
+      }
+    } catch (e) {
+      // If raw binary buffer
+      if (Buffer.isBuffer(msg) && dgConnection && dgConnection.getReadyState() === 1) {
+        dgConnection.send(msg);
+      }
+    }
+  });
+
+  ws.on('close', () => {
+    console.log(`[Telecom Stream] Carrier disconnected for call: ${callControlId}`);
+    if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
+    if (dgConnection && dgConnection.getReadyState() === 1) {
+      dgConnection.finish();
+    }
   });
 });
 

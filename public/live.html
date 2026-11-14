@@ -104,6 +104,12 @@
 
     <!-- Spectator Status Controls -->
     <div class="flex items-center gap-1.5 shrink-0">
+      <!-- Phone Interview / Telecom Bridge Button -->
+      <button id="phoneBridgeBtn" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/25 transition shrink-0" title="Connect Recruiter Phone Calls (Carrier *67* Stealth Forwarding)">
+        <i data-lucide="phone-call" class="w-3.5 h-3.5 text-white"></i>
+        <span>Phone Copilot</span>
+      </button>
+
       <!-- 1-Click Capture Google Meet Audio Button -->
       <button id="liveCaptureMeetBtn" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/25 transition shrink-0" title="Capture interviewer voice from Google Meet tab (zero candidate mic)">
         <i data-lucide="headphones" class="w-3.5 h-3.5 text-white"></i>
@@ -149,6 +155,98 @@
       <button id="submitPinBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl shadow-md transition text-sm sm:text-base">
         Join Live Session
       </button>
+    </div>
+  </div>
+
+  <!-- PHONE INTERVIEW SETUP MODAL -->
+  <div id="phoneSetupModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 rounded-3xl w-full max-w-md shadow-2xl border border-indigo-900/60 p-5 sm:p-6 space-y-4 text-white relative">
+      <button id="closePhoneModalBtn" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/60 transition">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center shrink-0">
+          <i data-lucide="phone-forwarded" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            Stealth Phone Copilot
+            <span class="text-[10px] bg-emerald-950 border border-emerald-700/60 text-emerald-300 font-mono px-2 py-0.5 rounded-full font-bold">100% Invisible</span>
+          </h3>
+          <p class="text-xs text-slate-400">Keep your personal number on your resume.</p>
+        </div>
+      </div>
+
+      <!-- Carrier 1-Tap Code Box -->
+      <div class="bg-slate-950/90 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between text-xs text-slate-400 font-semibold">
+          <span>1. Dial code once on your phone:</span>
+          <span class="text-emerald-400 text-[11px] font-bold">Mint / T-Mobile / Verizon / AT&amp;T</span>
+        </div>
+        <div class="flex items-center justify-between bg-slate-900 border border-indigo-800/80 rounded-xl px-3 py-2.5">
+          <span id="carrierDialCodeText" class="font-mono text-sm sm:text-base font-bold text-amber-300 tracking-wider">*67*18007526250#</span>
+          <button id="copyDialCodeBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span>Copy</span>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          &bull; <strong>Normal Calls:</strong> Tap Accept (Green). Talk normally.<br>
+          &bull; <strong>Recruiter Calls:</strong> Tap <strong>Decline (Red button)</strong>. The call instantly transfers to this screen with live AI answers!
+        </p>
+      </div>
+
+      <!-- Test 5-Min Interactive Demo Button -->
+      <div class="space-y-2">
+        <button id="testDemoCallBtn" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold py-3 rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 text-sm sm:text-base transition">
+          <i data-lucide="sparkles" class="w-4 h-4 text-emerald-200"></i>
+          <span>Test 5-Min Recruiter Demo Call</span>
+        </button>
+        <p class="text-[11px] text-slate-500 text-center">Simulates an incoming recruiter question so you can test live answers on your screen.</p>
+      </div>
+
+      <!-- Deactivation Code -->
+      <div class="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+        <span>To turn off anytime: Dial <strong class="text-slate-200 font-mono">##67#</strong></span>
+        <span class="text-indigo-400 font-semibold">&bull; 0 Min billed when idle</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOMING PHONE CALL RINGING MODAL -->
+  <div id="incomingCallModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-gradient-to-b from-slate-900 to-slate-950 rounded-3xl w-full max-w-sm shadow-2xl border border-indigo-700/80 p-6 text-center space-y-5 text-white animate-bounce-short">
+      
+      <!-- Pulsing Ring Icon -->
+      <div class="relative w-20 h-20 mx-auto flex items-center justify-center">
+        <div class="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping"></div>
+        <div class="absolute inset-2 rounded-full bg-emerald-500/40 animate-pulse"></div>
+        <div class="relative w-14 h-14 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xl shadow-emerald-500/50">
+          <i data-lucide="phone-incoming" class="w-7 h-7 animate-pulse"></i>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <span class="text-[10px] bg-emerald-950 border border-emerald-700/80 text-emerald-300 font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+          Stealth Handoff via *67*
+        </span>
+        <h3 id="incomingCallerName" class="text-lg sm:text-xl font-extrabold text-white mt-1">Amazon Recruiter</h3>
+        <p id="incomingCallerNumber" class="text-sm font-mono text-slate-300">+1 (415) 555-0199</p>
+        <p class="text-xs text-indigo-300 font-medium">Recruiter voice ready for real-time AI transcription</p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-2 gap-3 pt-2">
+        <button id="declineCallBtn" class="bg-slate-800 hover:bg-rose-950/80 hover:border-rose-700 border border-slate-700 text-slate-300 hover:text-rose-200 font-bold py-3 rounded-2xl transition flex items-center justify-center gap-1.5 text-sm">
+          <i data-lucide="phone-off" class="w-4 h-4"></i>
+          <span>Decline</span>
+        </button>
+        <button id="acceptCallBtn" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold py-3 rounded-2xl shadow-lg shadow-emerald-600/40 transition flex items-center justify-center gap-1.5 text-sm">
+          <i data-lucide="headphones" class="w-4 h-4"></i>
+          <span>Accept Call</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -596,6 +694,35 @@
 
       if (data.type === 'answer_style_updated' && data.style) {
         setAnswerStyle(data.style, false);
+      }
+
+      // TELECOM RECRUITER PHONE CALL EVENTS
+      if (data.type === 'telecom_incoming_call') {
+        currentCallControlId = data.callControlId;
+        isCurrentCallDemo = Boolean(data.isDemo);
+        incomingCallerName.textContent = data.callerName || 'Recruiter Call';
+        incomingCallerNumber.textContent = data.from || 'Incoming Line';
+        incomingCallModal.classList.remove('hidden');
+        playPhoneRingChime();
+      }
+
+      if (data.type === 'telecom_call_answered') {
+        incomingCallModal.classList.add('hidden');
+        hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-600 text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold shrink-0 animate-pulse';
+        hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 shrink-0';
+        hostStatusText.textContent = '📞 Phone Copilot Active';
+        questionCardLabel.textContent = '📞 Recruiter Speaking via Phone';
+      }
+
+      if (data.type === 'telecom_call_ended') {
+        incomingCallModal.classList.add('hidden');
+        currentCallControlId = null;
+        hostStatusBadge.className = 'flex items-center gap-1.5 bg-slate-900 border border-slate-800 text-slate-400 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold shrink-0';
+        hostStatusDot.className = 'w-2 h-2 rounded-full bg-slate-500 shrink-0';
+        hostStatusText.textContent = 'Call Ended';
+        setTimeout(() => {
+          hostStatusText.textContent = 'Listening to Call';
+        }, 3000);
       }
 
       // LIVE INTERVIEWER SPEECH
@@ -1077,6 +1204,175 @@
       setTimeout(connectSpectator, 150);
       if (window.lucide) lucide.createIcons();
     }
+
+    // ==========================================
+    // STEALTH PHONE COPILOT & DEMO SIMULATION
+    // ==========================================
+    let currentCallControlId = null;
+    let isCurrentCallDemo = false;
+    const phoneBridgeBtn = document.getElementById('phoneBridgeBtn');
+    const phoneSetupModal = document.getElementById('phoneSetupModal');
+    const closePhoneModalBtn = document.getElementById('closePhoneModalBtn');
+    const copyDialCodeBtn = document.getElementById('copyDialCodeBtn');
+    const carrierDialCodeText = document.getElementById('carrierDialCodeText');
+    const testDemoCallBtn = document.getElementById('testDemoCallBtn');
+    const incomingCallModal = document.getElementById('incomingCallModal');
+    const incomingCallerName = document.getElementById('incomingCallerName');
+    const incomingCallerNumber = document.getElementById('incomingCallerNumber');
+    const acceptCallBtn = document.getElementById('acceptCallBtn');
+    const declineCallBtn = document.getElementById('declineCallBtn');
+
+    if (phoneBridgeBtn) {
+      phoneBridgeBtn.onclick = () => {
+        phoneSetupModal.classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+      };
+    }
+
+    if (closePhoneModalBtn) {
+      closePhoneModalBtn.onclick = () => {
+        phoneSetupModal.classList.add('hidden');
+      };
+    }
+
+    if (copyDialCodeBtn && carrierDialCodeText) {
+      copyDialCodeBtn.onclick = () => {
+        navigator.clipboard.writeText(carrierDialCodeText.textContent.trim()).then(() => {
+          copyDialCodeBtn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-300"></i> Copied!';
+          if (window.lucide) lucide.createIcons();
+          setTimeout(() => {
+            copyDialCodeBtn.innerHTML = '<i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy';
+            if (window.lucide) lucide.createIcons();
+          }, 2000);
+        });
+      };
+    }
+
+    // Soft carrier ring chime using Web Audio API
+    function playPhoneRingChime() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc1 = audioCtx.createOscillator();
+        const osc2 = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(440, audioCtx.currentTime); // Standard US dial/ring pitch
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(480, audioCtx.currentTime);
+
+        gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.05);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.8);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(audioCtx.currentTime + 0.8);
+        osc2.stop(audioCtx.currentTime + 0.8);
+      } catch (e) {}
+    }
+
+    // Trigger 5-Min Interactive Recruiter Demo Call
+    if (testDemoCallBtn) {
+      testDemoCallBtn.onclick = async () => {
+        testDemoCallBtn.disabled = true;
+        testDemoCallBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Triggering Demo Call...';
+        if (window.lucide) lucide.createIcons();
+
+        try {
+          phoneSetupModal.classList.add('hidden');
+          const res = await fetch('/api/telecom/simulate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomId })
+          });
+          const data = await res.json();
+          currentCallControlId = data.callControlId;
+          isCurrentCallDemo = true;
+        } catch (err) {
+          console.error('[Demo Call Error]', err);
+        } finally {
+          testDemoCallBtn.disabled = false;
+          testDemoCallBtn.innerHTML = '<i data-lucide="sparkles" class="w-4 h-4 text-emerald-200"></i> Test 5-Min Recruiter Demo Call';
+          if (window.lucide) lucide.createIcons();
+        }
+      };
+    }
+
+    // Accept Incoming Call
+    if (acceptCallBtn) {
+      acceptCallBtn.onclick = async () => {
+        incomingCallModal.classList.add('hidden');
+        hostStatusBadge.className = 'flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-600 text-emerald-300 px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-bold shrink-0 animate-pulse';
+        hostStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400 shrink-0';
+        hostStatusText.textContent = '📞 Phone Copilot Active';
+        questionCardLabel.textContent = '📞 Recruiter Speaking via Phone';
+
+        if (currentCallControlId) {
+          try {
+            await fetch('/api/telecom/answer', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ callControlId: currentCallControlId })
+            });
+          } catch (e) {}
+        }
+
+        // If it was a demo call, simulate recruiter asking a live technical question
+        if (isCurrentCallDemo) {
+          qaLiveSpeechText.innerHTML = '<span class="text-indigo-300 italic">"Connecting to recruiter line..."</span>';
+          setTimeout(() => {
+            const demoQuestions = [
+              "Can you explain how indexing works in PostgreSQL, and walk me through a time when a B-Tree index wasn't sufficient?",
+              "In Spring Boot, what is the difference between @Component, @Service, and @Repository, and how does IoC manage their lifecycle?",
+              "How do you design a high-throughput microservices pipeline using Kafka to guarantee exactly-once processing?"
+            ];
+            const sampleQ = demoQuestions[Math.floor(Math.random() * demoQuestions.length)];
+            qaLiveSpeechText.innerHTML = `"${escapeHtml(sampleQ)}"`;
+            questionCardLabel.textContent = '📞 Recruiter Question (Live Demo)';
+
+            // Trigger Groq LLM live answer immediately
+            if (specWs && specWs.readyState === WebSocket.OPEN) {
+              specWs.send(JSON.stringify({
+                type: 'trigger_manual_answer',
+                text: sampleQ
+              }));
+            }
+          }, 1200);
+        }
+      };
+    }
+
+    // Decline / End Incoming Call
+    if (declineCallBtn) {
+      declineCallBtn.onclick = async () => {
+        incomingCallModal.classList.add('hidden');
+        if (currentCallControlId) {
+          try {
+            await fetch('/api/telecom/hangup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ callControlId: currentCallControlId })
+            });
+          } catch (e) {}
+          currentCallControlId = null;
+        }
+      };
+    }
+
+    // Load telecom config on startup
+    fetch('/api/telecom/config')
+      .then(r => r.json())
+      .then(cfg => {
+        if (cfg && cfg.carrierForwardCode && carrierDialCodeText) {
+          carrierDialCodeText.textContent = cfg.carrierForwardCode;
+        }
+      })
+      .catch(() => {});
 
     // Auto-connect
     connectSpectator();
