@@ -412,6 +412,26 @@ wss.on('connection', (ws, req) => {
         if (isFinal) {
           currentTurnPhrases.push(correctedText);
           console.log(`[Nova-3 Final] "${correctedText}" (speech_final: ${isSpeechFinal})`);
+
+          // Start / reset debounce silence timer (800ms) on any final sentence
+          if (clientGenerationMode === 'auto') {
+            const accumulatedText = currentTurnPhrases.join(' ').trim();
+            if (accumulatedText.length >= 8 && !isIncompleteThought(accumulatedText)) {
+              if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
+              turnDebounceTimer = setTimeout(async () => {
+                const now = Date.now();
+                if (!isGenerating && currentTurnPhrases.length > 0 && (now - lastAnswerGeneratedTime > 1500)) {
+                  const questionToAnswer = currentTurnPhrases.join(' ').trim();
+                  console.log(`[Copilot Auto-Trigger] Silence Confirmed (800ms timer): "${questionToAnswer}"`);
+                  currentTurnPhrases = [];
+                  isGenerating = true;
+                  await generateInstantAnswer(questionToAnswer, ws, groq, roomId);
+                  lastAnswerGeneratedTime = Date.now();
+                  isGenerating = false;
+                }
+              }, 800);
+            }
+          }
         }
 
         const words = data.channel.alternatives[0]?.words || [];
@@ -433,30 +453,49 @@ wss.on('connection', (ws, req) => {
         // Mirror to spectators in real-time (~100ms)
         broadcastToSpectators(transcriptPayload);
 
-        // TURN COMPLETION EVALUATION:
+        // TURN COMPLETION EVALUATION ON SPEECH_FINAL:
         if (isSpeechFinal) {
           const fullTurnText = currentTurnPhrases.join(' ').trim() || correctedText;
 
-          // Only auto-trigger if the client enabled 'auto' mode
           if (clientGenerationMode === 'auto') {
             if (isIncompleteThought(fullTurnText)) {
               console.log(`[Turn Hold] Incomplete thought detected ("${fullTurnText}"). Waiting...`);
               return;
             }
 
-            // 1000ms (1 Full Second) silence confirmation window for Auto mode
-            turnDebounceTimer = setTimeout(async () => {
-              const now = Date.now();
-              if (!isGenerating && fullTurnText.length >= 10 && (now - lastAnswerGeneratedTime > 2000)) {
-                console.log(`[Copilot Auto-Trigger] 1-Second Silence Confirmed: "${fullTurnText}"`);
-                currentTurnPhrases = [];
-                isGenerating = true;
+            if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
+            const now = Date.now();
+            if (!isGenerating && fullTurnText.length >= 8 && (now - lastAnswerGeneratedTime > 1500)) {
+              console.log(`[Copilot Auto-Trigger] SpeechFinal Confirmed: "${fullTurnText}"`);
+              currentTurnPhrases = [];
+              isGenerating = true;
 
-                await generateInstantAnswer(fullTurnText, ws, groq, roomId);
-                lastAnswerGeneratedTime = Date.now();
-                isGenerating = false;
-              }
-            }, 1000);
+              await generateInstantAnswer(fullTurnText, ws, groq, roomId);
+              lastAnswerGeneratedTime = Date.now();
+              isGenerating = false;
+            }
+          }
+        }
+      });
+
+      // Handle Deepgram UtteranceEnd event (fired when speaker stops talking)
+      dgConnection.on(LiveTranscriptionEvents.UtteranceEnd, async () => {
+        const fullTurnText = currentTurnPhrases.join(' ').trim();
+        if (!fullTurnText) return;
+        console.log(`[Deepgram UtteranceEnd] Speaker pause: "${fullTurnText}"`);
+
+        if (clientGenerationMode === 'auto') {
+          if (isIncompleteThought(fullTurnText)) return;
+          if (turnDebounceTimer) clearTimeout(turnDebounceTimer);
+          const now = Date.now();
+          if (!isGenerating && fullTurnText.length >= 8 && (now - lastAnswerGeneratedTime > 1500)) {
+            console.log(`[Copilot Auto-Trigger] UtteranceEnd Answer: "${fullTurnText}"`);
+            currentTurnPhrases = [];
+            isGenerating = true;
+
+            await generateInstantAnswer(fullTurnText, ws, groq, roomId);
+            lastAnswerGeneratedTime = Date.now();
+            isGenerating = false;
           }
         }
       });

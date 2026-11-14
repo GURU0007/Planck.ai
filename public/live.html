@@ -977,21 +977,16 @@
         }
         const rms = Math.sqrt(sumSquares / inputData.length);
 
-        if (rms < SILENCE_THRESHOLD_RMS) {
-          silentFramesCount++;
-          // Allow 3 silent frames (~250ms) to trail speech naturally for consonant cut-offs, then cut transmission
-          if (silentFramesCount > 3) {
-            return; // Cleanly cut trailing ambient noise so STT doesn't hallucinate!
-          }
-        } else {
-          silentFramesCount = 0;
-        }
-
         // Convert Float32 to Int16 PCM
         const pcm16 = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          const s = Math.max(-1, Math.min(1, inputData[i]));
-          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        if (rms < SILENCE_THRESHOLD_RMS) {
+          // Stream zeroed silence frames so Deepgram endpointing accurately detects pause without microphone hiss
+          pcm16.fill(0);
+        } else {
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
         }
 
         liveHostWs.send(pcm16.buffer);
